@@ -208,19 +208,28 @@ export default function (pi: ExtensionAPI) {
                 if (entries.length === 1) {
                   const [innerKey, innerVal] = entries[0];
                   // section: {page: 261} → move page to top level, clear section
-                  if (key === "section" && innerKey === "page" && typeof innerVal === "number") {
-                    args["page"] = innerVal;
+                  if (key === "section" && innerKey === "page") {
+                    args["page"] = typeof innerVal === "string" ? parseInt(innerVal, 10) : innerVal;
                     args["section"] = null;
                   // section: {text: "..."} or section: {heading: "..."} → unwrap to string
                   } else if (typeof innerVal === "string") {
                     args[key] = innerVal;
-                  // section: {page: "261"} → move and parse
-                  } else if (key === "section" && innerKey === "page" && typeof innerVal === "string") {
-                    args["page"] = parseInt(innerVal, 10);
-                    args["section"] = null;
                   }
                 }
               }
+            }
+            // Coerce page to integer — model often sends "262", "{\"262\"}", etc.
+            if ("page" in args && args["page"] !== null && args["page"] !== undefined) {
+              let p = args["page"];
+              if (typeof p === "string") {
+                // Strip any JSON encoding artifacts: "{\"262\"}" -> "262"
+                p = p.replace(/[{}"\\]/g, "").trim();
+                args["page"] = parseInt(p as string, 10) || null;
+              }
+            }
+            // Coerce max_results to integer
+            if ("max_results" in args && typeof args["max_results"] === "string") {
+              args["max_results"] = parseInt(args["max_results"] as string, 10) || 10;
             }
             return args;
           },
