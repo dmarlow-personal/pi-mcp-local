@@ -1,0 +1,23 @@
+{
+  "providers": {
+    "m1s1": {
+      "baseUrl": "http://M1-S1.lan:8081/v1",
+      "api": "openai-completions",
+      "apiKey": "sk-dummy",
+      "compat": {
+        "supportsDeveloperRole": false,
+        "supportsReasoningEffort": false
+      },
+      "models": [
+        {
+          "id": "gemma-4-31B-it-UD-Q6_K_XL.gguf",
+          "name": "Gemma 4 31B (M1:S1)",
+          "reasoning": false,
+          "input": ["text"],
+          "contextWindow": 262144,
+          "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
+        }
+      ]
+    }
+  }
+}

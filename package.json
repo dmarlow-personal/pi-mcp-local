@@ -1,0 +1,17 @@
+{
+  "name": "@dallasmarlow/pi-mcp-local",
+  "version": "0.1.0",
+  "description": "Pi agent package: MCP docs bridge, system monitor, approval gate, research skills, and prompt templates for local llama.cpp + MCP documentation server",
+  "keywords": ["pi-package"],
+  "license": "MIT",
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": "*",
+    "@mariozechner/pi-tui": "*",
+    "@sinclair/typebox": "*"
+  },
+  "pi": {
+    "extensions": ["./extensions"],
+    "skills": ["./skills"],
+    "prompts": ["./prompts"]
+  }
+}
