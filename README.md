@@ -8,6 +8,8 @@ Pi agent package for connecting to a local MCP documentation server via llama.cp
 - **mcp-docs** — MCP bridge: discovers tools from the docs server, registers them as native pi tools with `docs_` prefix, handles session management, response truncation, argument auto-correction, retry logic, and temperature capping
 - **sys-monitor** — Real-time CPU/RAM monitor in the pi footer bar with multi-gradient bars
 - **approve-edits** — Approval gate for edit/write/bash tool calls (toggle by renaming the file)
+- **lsp** — TypeScript Language Server integration: diagnostics, go-to-definition, hover, find references via `lsp_*` tools
+- **hash-edit** — Hash-anchored edits: annotates read output with per-line content hashes, registers `hash_edit` tool for precision edits
 
 ### Skills
 - **resources** — Book inventory (17 books), domain mapping, search strategies
@@ -48,23 +50,37 @@ pi install git:github.com/dallasmarlow/pi-mcp-local
 ```json
 {
   "defaultProvider": "m1s1",
-  "defaultModel": "gemma-4-31B-it-UD-Q6_K_XL.gguf"
+  "defaultModel": "Qwen3.5-122B-A10B-UD-Q5_K_XL.gguf"
 }
 ```
 
 ## Configuration
 
-The MCP extension reads connection details from constants at the top of `extensions/mcp-docs/index.ts`:
+### MCP Connection
 
-```typescript
-const MCP_URL = "http://M1-S1.local:8765/mcp";
-const MCP_TOKEN = "your-bearer-token";
+Set via environment variables or a `.env` file in the project root:
+
+```bash
+PI_MCP_URL=http://M1-S1.local:8765/mcp
+PI_MCP_TOKEN=your-bearer-token-here
 ```
 
-Update these for your environment. The model provider config in `models.example.json` should also be adjusted for your llama.cpp endpoint.
+Copy `.env.example` to `.env` and fill in your values. The extension falls back to `PI_MCP_URL=http://M1-S1.local:8765/mcp` if unset.
+
+### Model Provider
+
+The model provider config in `models.example.json` should be adjusted for your llama.cpp endpoint.
+
+## Dependencies
+
+External tools are listed in `deps.json` and installed via `make deps` (also runs as part of `make install`):
+
+- **typescript-language-server** — Required by the LSP extension
+- **typescript** — Required by typescript-language-server
 
 ## Requirements
 
 - [pi-coding-agent](https://www.npmjs.com/package/@mariozechner/pi-coding-agent) v0.66+
 - llama.cpp server with OpenAI-compatible API
 - MCP documentation server (mcp-local) with Streamable HTTP transport
+- Node.js 18+ (for LSP and hash-edit extensions)

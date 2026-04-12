@@ -101,8 +101,17 @@ Personal notes (user's Obsidian vault -- NOT part of the research pipeline):
 - `docs_vault_search` -- "do I have a note on X?" lookup by content/tags
 - `docs_vault_read` -- read a specific vault note with metadata
 - `docs_vault_list` -- browse note domains and inventory
-- `docs_vault_write` -- create or update vault notes
+- `docs_vault_write` -- create or update vault notes (title, content, path, tags as SEPARATE params)
 - `docs_vault_move` -- move or rename vault notes
+
+LSP (TypeScript language intelligence -- use for navigating code without reading whole files):
+- `lsp_diagnostics` -- type errors and warnings for a file. Use after edits to verify correctness.
+- `lsp_definition` -- go to definition of a symbol at line:character
+- `lsp_hover` -- type signature and docs at a position
+- `lsp_references` -- find all usages of a symbol across the project
+
+Precision editing:
+- `hash_edit` -- edit using line content hashes as anchors. Each line in read output has a 6-char hash prefix. Use when standard edit has whitespace or ambiguity issues.
 
 ## Critical: vault_read vs vault_document_read
 

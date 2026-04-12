@@ -1,8 +1,26 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type, type TSchema } from "@sinclair/typebox";
+import { readFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const MCP_URL = "http://M1-S1.local:8765/mcp";
-const MCP_TOKEN = "WfyTw_qAgKVTx9UC-Vb0W8J7efc2rB85PdSTVey1aOM";
+// Load .env from repo root (two levels up from extensions/mcp-docs/)
+try {
+  const envPath = resolve(dirname(fileURLToPath(import.meta.url)), "../../.env");
+  const envContent = readFileSync(envPath, "utf8");
+  for (const line of envContent.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq < 0) continue;
+    const key = trimmed.slice(0, eq).trim();
+    const val = trimmed.slice(eq + 1).trim();
+    if (!process.env[key]) process.env[key] = val;
+  }
+} catch { /* .env file is optional */ }
+
+const MCP_URL = process.env.PI_MCP_URL || "http://M1-S1.local:8765/mcp";
+const MCP_TOKEN = process.env.PI_MCP_TOKEN || "";
 
 interface McpToolDef {
   name: string;
@@ -148,6 +166,13 @@ const toolGuidelines: Record<string, string[]> = {
   docs_list_code_examples: [
     "Keep max_results at 5-10. Always specify a language filter.",
   ],
+  docs_vault_write: [
+    "ALWAYS provide title, content, path, and tags as SEPARATE parameters.",
+    "title is a plain string like title=\"My Note Title\".",
+    "tags is an ARRAY of strings like tags=[\"tag1\", \"tag2\"]. NOT a string, NOT embedded in content.",
+    "Do NOT embed tags as #hashtags at the end of content.",
+    "Do NOT stuff title inside the tags parameter.",
+  ],
 };
 
 export default function (pi: ExtensionAPI) {
@@ -231,6 +256,70 @@ export default function (pi: ExtensionAPI) {
             if ("max_results" in args && typeof args["max_results"] === "string") {
               args["max_results"] = parseInt(args["max_results"] as string, 10) || 10;
             }
+
+            // vault_write-specific fixes
+            if (piName === "docs_vault_write") {
+              // Fix mangled tags: extract title if embedded, parse to string[]
+              let tags = args["tags"];
+              if (typeof tags === "string") {
+                const tagStr = tags as string;
+                // Extract title if stuffed into tags string: ,title:"Some Title"} or title:"Some Title"
+                if (!args["title"] && tagStr.includes("title:")) {
+                  const titleMatch = tagStr.match(/title:\s*"([^"]+)"/);
+                  if (titleMatch) args["title"] = titleMatch[1];
+                }
+                // Parse quoted terms from malformed string like "{\"arch\",\"patterns\"}"
+                const quoted = tagStr.match(/"([^"]+)"/g);
+                if (quoted) {
+                  const cleanTags = quoted
+                    .map((q) => q.slice(1, -1))
+                    .filter((t) => !t.includes(":") && t.length > 0);
+                  args["tags"] = cleanTags.length > 0 ? cleanTags : null;
+                } else {
+                  // Try comma-separated: "arch, patterns, cqrs"
+                  const parts = tagStr.replace(/[{}"\\]/g, "").split(",").map((s) => s.trim()).filter(Boolean);
+                  const filtered = parts.filter((t) => !t.includes(":"));
+                  args["tags"] = filtered.length > 0 ? filtered : null;
+                }
+              }
+
+              // Strip trailing hashtag lines from content and merge into tags
+              if (args["content"] && typeof args["content"] === "string") {
+                const lines = (args["content"] as string).split("\n");
+                const extractedTags: string[] = [];
+                // Walk backwards to find trailing hashtag-only lines
+                let cutFrom = lines.length;
+                for (let i = lines.length - 1; i >= 0; i--) {
+                  const trimmed = lines[i].trim();
+                  if (trimmed === "") { cutFrom = i; continue; }
+                  if (/^#[\w-]+(\s+#[\w-]+)*\s*$/.test(trimmed)) {
+                    const hashes = trimmed.match(/#([\w-]+)/g) || [];
+                    hashes.forEach((h) => extractedTags.push(h.slice(1)));
+                    cutFrom = i;
+                  } else {
+                    break;
+                  }
+                }
+                if (extractedTags.length > 0) {
+                  args["content"] = lines.slice(0, cutFrom).join("\n").trimEnd();
+                  const existing = Array.isArray(args["tags"]) ? (args["tags"] as string[]) : [];
+                  args["tags"] = Array.from(new Set([...existing, ...extractedTags]));
+                }
+              }
+
+              // Infer title if still missing
+              if (!args["title"] || args["title"] === "") {
+                if (args["content"] && typeof args["content"] === "string") {
+                  const heading = (args["content"] as string).match(/^#+\s+(.+)/m);
+                  if (heading) args["title"] = heading[1].trim().slice(0, 120);
+                }
+                if (!args["title"] && args["path"] && typeof args["path"] === "string") {
+                  const slug = (args["path"] as string).split("/").pop()?.replace(/\.md$/, "") || "Untitled";
+                  args["title"] = slug.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+                }
+              }
+            }
+
             return args;
           },
           async execute(toolCallId, params, signal) {

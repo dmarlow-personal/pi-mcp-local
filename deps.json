@@ -1,0 +1,16 @@
+{
+  "tools": [
+    {
+      "name": "typescript-language-server",
+      "description": "TypeScript/JavaScript language server for LSP extension",
+      "install": "npm install -g typescript-language-server",
+      "check": "typescript-language-server --version"
+    },
+    {
+      "name": "typescript",
+      "description": "TypeScript compiler (required by typescript-language-server)",
+      "install": "npm install -g typescript",
+      "check": "tsc --version"
+    }
+  ]
+}
