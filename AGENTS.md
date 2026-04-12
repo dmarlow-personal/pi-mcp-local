@@ -72,6 +72,8 @@ ALWAYS pass section as a plain string. ALWAYS specify section OR page.
 
 **Step 3 -- Web search** (fill gaps, live docs, current APIs)
 Use when MCP docs lack coverage. Validates and reinforces, doesn't replace.
+  `web_search(query="SearXNG API JSON format", max_results=10)` -- search Google/DuckDuckGo/Brave/Wikipedia/GitHub
+  `web_fetch(url="https://example.com/docs")` -- fetch and extract text from a URL in the results
 
 **Enforcement:** Non-trivial tasks with step 1 skipped --
 output "I need to research before implementing. Proceed with search?"
@@ -112,6 +114,10 @@ LSP (TypeScript language intelligence -- use for navigating code without reading
 
 Precision editing:
 - `hash_edit` -- edit using line content hashes as anchors. Each line in read output has a 6-char hash prefix. Use when standard edit has whitespace or ambiguity issues.
+
+Web (SearXNG metasearch -- local, no API keys):
+- `web_search` -- search the web via Google, DuckDuckGo, Brave, Wikipedia, GitHub. Returns titles, URLs, and snippets. Params: query (required), max_results (default 10), categories ("general", "it", "science", "news").
+- `web_fetch` -- fetch a URL and extract text content. Use after web_search to read full pages. Params: url (required), max_length (default 15000).
 
 ## Critical: vault_read vs vault_document_read
 

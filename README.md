@@ -6,7 +6,9 @@ Pi agent package for connecting to a local MCP documentation server via llama.cp
 
 ### Extensions
 - **mcp-docs** — MCP bridge: discovers tools from the docs server, registers them as native pi tools with `docs_` prefix, handles session management, response truncation, argument auto-correction, retry logic, and temperature capping
-- **sys-monitor** — Real-time CPU/RAM monitor in the pi footer bar with multi-gradient bars
+- **web-search** — Web search (`web_search`) and page fetching (`web_fetch`) via local SearXNG metasearch (Google, DuckDuckGo, Brave, Wikipedia, GitHub). No API keys required.
+- **normalize-messages** — Merges consecutive same-role messages before provider requests to prevent Jinja chat template role-alternation errors
+- **sys-monitor** — Real-time CPU/GPU/RAM monitor in the pi footer bar
 - **approve-edits** — Approval gate for edit/write/bash tool calls (toggle by renaming the file)
 - **lsp** — TypeScript Language Server integration: diagnostics, go-to-definition, hover, find references via `lsp_*` tools
 - **hash-edit** — Hash-anchored edits: annotates read output with per-line content hashes, registers `hash_edit` tool for precision edits
