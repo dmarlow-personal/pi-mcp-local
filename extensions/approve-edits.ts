@@ -2,9 +2,11 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 export default function (pi: ExtensionAPI) {
   const gatedTools = ["edit", "write", "bash"];
+  const autoAccept = process.env.PI_AUTO_ACCEPT === "1";
 
   pi.on("tool_call", async (event, ctx) => {
     if (!gatedTools.includes(event.toolName)) return undefined;
+    if (autoAccept) return undefined;
     if (!ctx.hasUI) return { block: true, reason: "No UI for approval" };
 
     let summary = event.toolName;
