@@ -2,15 +2,28 @@ import type { AssistantMessage } from "@mariozechner/pi-ai";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 import os from "node:os";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+const GPU_BUSY_PATH = "/sys/class/drm/card0/device/gpu_busy_percent";
+
+let defaultThinkingLevel: string | null = null;
+try {
+  const settingsPath = resolve(os.homedir(), ".pi/agent/settings.json");
+  const settings = JSON.parse(readFileSync(settingsPath, "utf8"));
+  defaultThinkingLevel = settings.defaultThinkingLevel || null;
+} catch { /* no settings file */ }
 
 export default function (pi: ExtensionAPI) {
   let intervalId: NodeJS.Timeout | null = null;
   let cpuPct = 0;
+  let gpuPct = 0;
   let memPct = 0;
 
   const sample = () => {
     memPct = ((os.totalmem() - os.freemem()) / os.totalmem()) * 100;
     cpuPct = Math.min((os.loadavg()[0] / os.cpus().length) * 100, 100);
+    try { gpuPct = parseInt(readFileSync(GPU_BUSY_PATH, "utf8"), 10) || 0; } catch { gpuPct = 0; }
   };
 
   function formatTokens(n: number): string {
@@ -74,8 +87,8 @@ export default function (pi: ExtensionAPI) {
           const modelName = ctx.model?.id || "no-model";
           let rightText = modelName;
           if (ctx.model?.reasoning) {
-            const tl = ctx.sessionManager?.state?.thinkingLevel || "off";
-            rightText = tl === "off" ? `${modelName} \u2022 thinking off` : `${modelName} \u2022 ${tl}`;
+            const tl = ctx.sessionManager?.state?.thinkingLevel || defaultThinkingLevel;
+            if (tl && tl !== "off") rightText = `${modelName} \u2022 ${tl}`;
           }
           if (footerData.getAvailableProviderCount?.() > 1 && ctx.model) {
             const candidate = `(${ctx.model.provider}) ${rightText}`;
@@ -85,23 +98,16 @@ export default function (pi: ExtensionAPI) {
           // Center: sys monitor
           const bar = (pct: number) => {
             const w = 8, f = Math.round((w * pct) / 100);
-            const fillColor = pct > 90 ? "error" : pct > 70 ? "warning" : "muted";
-            const emptyColor = "dim";
-            const capColor = "dim";
             let inner = "";
             for (let i = 0; i < w; i++) {
-              const segPct = ((i + 1) / w) * 100;
-              if (i < f) {
-                const c = segPct > 90 ? "error" : segPct > 70 ? "warning" : fillColor;
-                inner += theme.fg(c, "\u2588");
-              } else {
-                inner += theme.fg(emptyColor, "\u2591");
-              }
+              inner += theme.fg("dim", i < f ? "\u2588" : "\u2591");
             }
-            return theme.fg(capColor, "\u2595") + inner + theme.fg(capColor, "\u258f");
+            return theme.fg("dim", "\u2595") + inner + theme.fg("dim", "\u258f");
           };
           const centerText =
             theme.fg("dim", "cpu ") + bar(cpuPct) + theme.fg("dim", ` ${cpuPct.toFixed(0).padStart(3)}%`) +
+            theme.fg("dim", "  ") +
+            theme.fg("dim", "gpu ") + bar(gpuPct) + theme.fg("dim", ` ${gpuPct.toFixed(0).padStart(3)}%`) +
             theme.fg("dim", "  ") +
             theme.fg("dim", "ram ") + bar(memPct) + theme.fg("dim", ` ${memPct.toFixed(0).padStart(3)}%`);
 

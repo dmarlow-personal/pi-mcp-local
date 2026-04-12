@@ -122,9 +122,9 @@ gemma4:
 ## Swap to Qwen3.5 122B A10B
 qwen-122B:
 	@$(MAKE) --no-print-directory _swap-model \
-		ID="Qwen3.5-122B-A10B-UD-Q5_K_XL.gguf" \
+		ID="Qwen3.5-122B-A10B-UD-Q4_K_XL.gguf" \
 		NAME="Qwen3.5 122B A10B (M1:S1)" \
-		CTX=131072 \
+		CTX=262144 \
 		REASONING=true
 
 ## Status: show what's installed
