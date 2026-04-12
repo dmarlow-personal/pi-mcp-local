@@ -24,7 +24,7 @@ install: pull deps
 	fi
 	@# Set default provider and thinking level if not already configured
 	@if ! grep -q '"defaultProvider"' $(PI_DIR)/settings.json 2>/dev/null; then \
-		python3 -c "import json, os; f='$(PI_DIR)/settings.json'; d=json.load(open(f)) if os.path.exists(f) else {}; d.update({'provider':'m1s1','model':'Qwen3.5-122B-A10B-UD-Q4_K_XL.gguf','defaultProvider':'m1s1','defaultModel':'Qwen3.5-122B-A10B-UD-Q4_K_XL.gguf','defaultThinkingLevel':'high'}); json.dump(d,open(f,'w'),indent=2)"; \
+		python3 -c "import json, os; f='$(PI_DIR)/settings.json'; d=json.load(open(f)) if os.path.exists(f) else {}; d.update({'provider':'m1s1','model':'Qwen3.5-122B-A10B-UD-Q4_K_XL-00001-of-00003.gguf','defaultProvider':'m1s1','defaultModel':'Qwen3.5-122B-A10B-UD-Q4_K_XL-00001-of-00003.gguf','defaultThinkingLevel':'high'}); json.dump(d,open(f,'w'),indent=2)"; \
 		echo "  -> Set default provider to m1s1 (Qwen3.5 122B Q4)"; \
 	else \
 		echo "  -> Default provider already configured, skipping"; \
@@ -92,7 +92,7 @@ gemma4:
 ## Swap to Qwen3.5 122B A10B
 qwen-122B:
 	@$(MAKE) --no-print-directory _swap-model \
-		ID="Qwen3.5-122B-A10B-UD-Q4_K_XL.gguf" \
+		ID="Qwen3.5-122B-A10B-UD-Q4_K_XL-00001-of-00003.gguf" \
 		NAME="Qwen3.5 122B A10B (M1:S1)" \
 		CTX=262144 \
 		REASONING=true
