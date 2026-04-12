@@ -52,7 +52,7 @@ pi install git:github.com/dallasmarlow/pi-mcp-local
 ```json
 {
   "defaultProvider": "m1s1",
-  "defaultModel": "Qwen3.5-122B-A10B-UD-Q5_K_XL.gguf"
+  "defaultModel": "Qwen3.5-122B-A10B-UD-Q4_K_XL.gguf"
 }
 ```
 

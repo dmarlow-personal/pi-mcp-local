@@ -1,15 +1,17 @@
 SHELL := /bin/bash
 PI_DIR := $(HOME)/.pi/agent
 REPO_DIR := $(shell pwd)
+SEARXNG_IMAGE := docker.io/searxng/searxng:latest
+SEARXNG_PORT := 8888
 
-.PHONY: install update uninstall status deps gemma4 qwen-122B
+.PHONY: install update uninstall status deps searxng searxng-stop gemma4 qwen-122B
 
 ## Install external tool dependencies listed in deps.json
 deps:
 	@echo "=== Checking dependencies ==="
 	@python3 $(REPO_DIR)/scripts/check-deps.py $(REPO_DIR)/deps.json
 
-## Install: pull latest, copy config, register package
+## Install: pull latest, copy config, register package, set up SearXNG
 install: pull deps
 	@echo "=== Installing pi-mcp-local ==="
 	@mkdir -p $(PI_DIR)
@@ -24,8 +26,19 @@ install: pull deps
 	fi
 	@# Set default provider and thinking level if not already configured
 	@if ! grep -q '"defaultProvider"' $(PI_DIR)/settings.json 2>/dev/null; then \
-		python3 -c "import json, os; f='$(PI_DIR)/settings.json'; d=json.load(open(f)) if os.path.exists(f) else {}; d.update({'provider':'m1s1','model':'Qwen3.5-122B-A10B-UD-Q4_K_XL.gguf','defaultProvider':'m1s1','defaultModel':'Qwen3.5-122B-A10B-UD-Q4_K_XL.gguf','defaultThinkingLevel':'high'}); json.dump(d,open(f,'w'),indent=2)"; \
-		echo "  -> Set default provider to m1s1 (Qwen3.5 122B Q4)"; \
+		python3 -c "\
+import json, os; \
+f = '$(PI_DIR)/settings.json'; \
+d = json.load(open(f)) if os.path.exists(f) else {}; \
+d.update({ \
+    'provider': 'm1s1', \
+    'model': 'Qwen3.5-122B-A10B-UD-Q4_K_XL.gguf', \
+    'defaultProvider': 'm1s1', \
+    'defaultModel': 'Qwen3.5-122B-A10B-UD-Q4_K_XL.gguf', \
+    'defaultThinkingLevel': 'high', \
+}); \
+json.dump(d, open(f, 'w'), indent=2)"; \
+		echo "  -> Set default provider to m1s1 (Qwen3.5 122B Q4)";
 	else \
 		echo "  -> Default provider already configured, skipping"; \
 	fi
@@ -38,16 +51,39 @@ install: pull deps
 	else \
 		echo "  -> .env already exists, skipping"; \
 	fi
+	@# Set up SearXNG
+	@$(MAKE) --no-print-directory searxng
 	@echo ""
 	@echo "=== Done ==="
 	@echo "Set MCP connection details via environment variables or in .env:"
 	@echo "  PI_MCP_URL   = your MCP server endpoint"
 	@echo "  PI_MCP_TOKEN = your bearer token"
 	@echo ""
-	@echo "SearXNG is managed by the mcp-local repo (make searxng-install)."
-	@echo "Set SEARXNG_URL in .env if not running on the same machine."
-	@echo ""
 	@echo "Start pi to verify: pi"
+
+## Set up SearXNG metasearch (web_search / web_fetch tools)
+searxng:
+	@echo "=== Setting up SearXNG ==="
+	@# Pull image if needed
+	@if ! podman image exists $(SEARXNG_IMAGE) 2>/dev/null; then \
+		echo "  Pulling SearXNG image..."; \
+		podman pull $(SEARXNG_IMAGE); \
+	else \
+		echo "  -> SearXNG image already present"; \
+	fi
+	@# Install systemd service
+	@mkdir -p $(HOME)/.config/systemd/user
+	@sed 's|__SETTINGS_PATH__|$(REPO_DIR)/config/searxng/settings.yml|g; s|__PORT__|$(SEARXNG_PORT)|g; s|__IMAGE__|$(SEARXNG_IMAGE)|g' \
+		$(REPO_DIR)/config/searxng/searxng.service.template \
+		> $(HOME)/.config/systemd/user/searxng.service
+	@systemctl --user daemon-reload
+	@systemctl --user enable --now searxng.service 2>/dev/null
+	@echo "  -> SearXNG running on 127.0.0.1:$(SEARXNG_PORT)"
+
+## Stop SearXNG
+searxng-stop:
+	@systemctl --user stop searxng.service 2>/dev/null || true
+	@echo "SearXNG stopped"
 
 ## Update: pull latest changes, sync AGENTS.md
 update: pull
@@ -55,6 +91,11 @@ update: pull
 	@cp -v $(REPO_DIR)/AGENTS.md $(PI_DIR)/AGENTS.md
 	@echo "  -> AGENTS.md synced"
 	@echo "  -> Extensions/skills/prompts update automatically via package link"
+	@# Restart SearXNG if running (picks up config changes)
+	@if systemctl --user is-active searxng.service >/dev/null 2>&1; then \
+		systemctl --user restart searxng.service; \
+		echo "  -> SearXNG restarted"; \
+	fi
 	@echo "=== Done. Run /reload in pi to apply ==="
 
 ## Pull latest from git
@@ -69,13 +110,28 @@ uninstall:
 	@echo "=== Uninstalling pi-mcp-local ==="
 	@pi remove $(REPO_DIR) 2>/dev/null || echo "  -> Package not registered"
 	@rm -f $(PI_DIR)/AGENTS.md && echo "  -> Removed AGENTS.md"
+	@systemctl --user disable --now searxng.service 2>/dev/null || true
+	@rm -f $(HOME)/.config/systemd/user/searxng.service
+	@systemctl --user daemon-reload
+	@echo "  -> SearXNG service removed"
 	@echo "  -> models.json and settings.json left intact (manual cleanup if needed)"
 	@echo "=== Done ==="
 
 ## Swap model: shared helper (call via model swap targets below)
 ## Usage: $(MAKE) _swap-model ID=... NAME=... CTX=... REASONING=...
 _swap-model:
-	@python3 -c "import json; mf='$(PI_DIR)/models.json'; sf='$(PI_DIR)/settings.json'; m=json.load(open(mf)); m['providers']['m1s1']['models']=[{'id':'$(ID)','name':'$(NAME)','reasoning':$(REASONING),'input':['text'],'contextWindow':$(CTX),'cost':{'input':0,'output':0,'cacheRead':0,'cacheWrite':0}}]; json.dump(m,open(mf,'w'),indent=2); s=json.load(open(sf)); s.update({'model':'$(ID)','defaultModel':'$(ID)'}); json.dump(s,open(sf,'w'),indent=2)"
+	@python3 -c "\
+import json; \
+mf = '$(PI_DIR)/models.json'; sf = '$(PI_DIR)/settings.json'; \
+m = json.load(open(mf)); \
+m['providers']['m1s1']['models'] = [{ \
+    'id': '$(ID)', 'name': '$(NAME)', 'reasoning': $(REASONING), \
+    'input': ['text'], 'contextWindow': $(CTX), \
+    'cost': {'input': 0, 'output': 0, 'cacheRead': 0, 'cacheWrite': 0}}]; \
+json.dump(m, open(mf, 'w'), indent=2); \
+s = json.load(open(sf)); \
+s.update({'model': '$(ID)', 'defaultModel': '$(ID)'}); \
+json.dump(s, open(sf, 'w'), indent=2)"
 	@echo "Switched to: $(NAME)"
 	@echo "  Model:   $(ID)"
 	@echo "  Context: $(CTX)"
@@ -106,6 +162,9 @@ status:
 	@echo "Live files:"
 	@[ -f $(PI_DIR)/AGENTS.md ] && echo "  AGENTS.md: installed" || echo "  AGENTS.md: MISSING"
 	@[ -f $(PI_DIR)/models.json ] && echo "  models.json: installed" || echo "  models.json: MISSING"
+	@echo ""
+	@echo "Services:"
+	@systemctl --user is-active searxng.service >/dev/null 2>&1 && echo "  SearXNG: running (port $(SEARXNG_PORT))" || echo "  SearXNG: not running"
 	@echo ""
 	@echo "Package registration:"
 	@pi list 2>/dev/null | grep -i "mcp-local" || echo "  Not registered (run 'make install')"
