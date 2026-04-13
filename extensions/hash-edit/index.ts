@@ -13,6 +13,10 @@ const hashCache = new Map<string, Array<{ hash: string; content: string }>>();
 
 function cacheFile(filePath: string, lines: string[]): void {
   hashCache.set(filePath, lines.map((line) => ({ hash: lineHash(line), content: line })));
+  if (hashCache.size > 200) {
+    const first = hashCache.keys().next().value;
+    if (first) hashCache.delete(first);
+  }
 }
 
 function findLineByHash(filePath: string, anchorHash: string): { line: number; content: string } | null {
@@ -141,7 +145,12 @@ export default function (pi: ExtensionAPI) {
 
       if (modified) {
         const newContent = lines.join("\n");
-        await writeFile(file_path, newContent, "utf8");
+        try {
+          await writeFile(file_path, newContent, "utf8");
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          return { content: [{ type: "text" as const, text: `Write failed: ${msg}` }], isError: true };
+        }
         // Update cache with new content
         cacheFile(file_path, lines);
         results.push(`\nFile written. ${edits.length} edit(s) processed.`);

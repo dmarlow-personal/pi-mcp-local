@@ -5,7 +5,7 @@ import os from "node:os";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const GPU_BUSY_PATH = "/sys/class/drm/card0/device/gpu_busy_percent";
+const GPU_BUSY_PATH = process.env.GPU_BUSY_PATH || "/sys/class/drm/card0/device/gpu_busy_percent";
 
 let defaultThinkingLevel: string | null = null;
 try {
@@ -43,6 +43,7 @@ export default function (pi: ExtensionAPI) {
         dispose: unsub,
         invalidate() {},
         render(width: number): string[] {
+          try {
           // --- Line 1: pwd + git branch + session name ---
           let pwd = ctx.sessionManager?.getCwd?.() || process.cwd();
           const home = process.env.HOME || process.env.USERPROFILE;
@@ -115,26 +116,11 @@ export default function (pi: ExtensionAPI) {
           const rw = visibleWidth(rightText);
           const cw = visibleWidth(centerText);
 
-          let statsLine: string;
-          const totalNeeded = lw + 2 + cw + 2 + rw;
-
-          if (totalNeeded <= width) {
-            // All three fit: left ... center ... right
-            const totalPad = width - lw - cw - rw;
-            const padLeft = Math.floor(totalPad / 2);
-            const padRight = totalPad - padLeft;
-            statsLine = leftText + " ".repeat(padLeft) + centerText + " ".repeat(padRight) + rightText;
-          } else if (lw + 2 + rw <= width) {
-            // No room for center, fall back to default left...right
-            const padding = " ".repeat(width - lw - rw);
-            statsLine = leftText + padding + rightText;
-          } else {
-            statsLine = truncateToWidth(leftText, width, "...");
-          }
-
           const dimLeft = theme.fg("dim", leftText);
           const dimRight = theme.fg("dim", rightText);
+          const totalNeeded = lw + 2 + cw + 2 + rw;
 
+          let statsLine: string;
           if (totalNeeded <= width) {
             const totalPad = width - lw - cw - rw;
             const padLeft = Math.floor(totalPad / 2);
@@ -159,6 +145,7 @@ export default function (pi: ExtensionAPI) {
           }
 
           return lines;
+          } catch { return []; }
         },
       };
     });

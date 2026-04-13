@@ -6,6 +6,7 @@ import path from "node:path";
 interface LspRequest {
   resolve: (value: unknown) => void;
   reject: (reason: unknown) => void;
+  timer: ReturnType<typeof setTimeout>;
 }
 
 let server: ChildProcess | null = null;
@@ -26,13 +27,13 @@ function sendRequest(method: string, params: unknown): Promise<unknown> {
   const msg = { jsonrpc: "2.0", id, method, params };
   server.stdin.write(contentLengthEncode(msg));
   return new Promise((resolve, reject) => {
-    pending.set(id, { resolve, reject });
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       if (pending.has(id)) {
         pending.delete(id);
         reject(new Error(`LSP request ${method} timed out after 15s`));
       }
     }, 15000);
+    pending.set(id, { resolve, reject, timer });
   });
 }
 
@@ -44,6 +45,7 @@ function sendNotification(method: string, params: unknown): void {
 
 function handleData(chunk: string): void {
   buffer += chunk;
+  if (buffer.length > 2 * 1024 * 1024) { buffer = ""; return; }
   while (true) {
     const headerEnd = buffer.indexOf("\r\n\r\n");
     if (headerEnd < 0) break;
@@ -60,6 +62,7 @@ function handleData(chunk: string): void {
       if (msg.id !== undefined && pending.has(msg.id)) {
         const req = pending.get(msg.id)!;
         pending.delete(msg.id);
+        clearTimeout(req.timer);
         if (msg.error) req.reject(new Error(msg.error.message));
         else req.resolve(msg.result);
       }

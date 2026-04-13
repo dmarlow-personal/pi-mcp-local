@@ -21,6 +21,7 @@ try {
 
 const MCP_URL = process.env.PI_MCP_URL || "http://M1-S1.local:8765/mcp";
 const MCP_TOKEN = process.env.PI_MCP_TOKEN || "";
+if (!MCP_TOKEN) console.warn("[mcp-docs] PI_MCP_TOKEN is not set -- requests will be unauthenticated");
 
 interface McpToolDef {
   name: string;
@@ -37,6 +38,7 @@ interface JsonRpcResponse {
 
 let requestId = 0;
 let sessionId: string | null = null;
+let reinitializing: Promise<void> | null = null;
 
 function parseResponse(text: string): JsonRpcResponse {
   // Handle SSE-style streaming responses (streamable HTTP transport)
@@ -64,6 +66,7 @@ async function mcpInitialize(): Promise<void> {
   const res = await fetch(MCP_URL, {
     method: "POST",
     headers,
+    signal: AbortSignal.timeout(10_000),
     body: JSON.stringify({
       jsonrpc: "2.0",
       method: "initialize",
@@ -88,6 +91,7 @@ async function mcpInitialize(): Promise<void> {
   await fetch(MCP_URL, {
     method: "POST",
     headers: notifHeaders,
+    signal: AbortSignal.timeout(10_000),
     body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }),
   });
 }
@@ -334,7 +338,8 @@ export default function (pi: ExtensionAPI) {
                   // Retry once on transient errors (session expired, etc.)
                   if (retry && (response.error.code === -32600 || response.error.code === -32000)) {
                     sessionId = null;
-                    await mcpInitialize();
+                    if (!reinitializing) reinitializing = mcpInitialize().finally(() => { reinitializing = null; });
+                    await reinitializing;
                     return attempt(false);
                   }
                   return {
@@ -359,7 +364,8 @@ export default function (pi: ExtensionAPI) {
                 if (retry && (msg.includes("fetch") || msg.includes("ECONNREFUSED") || msg.includes("socket"))) {
                   sessionId = null;
                   try {
-                    await mcpInitialize();
+                    if (!reinitializing) reinitializing = mcpInitialize().finally(() => { reinitializing = null; });
+                    await reinitializing;
                     return attempt(false);
                   } catch { /* fall through to error */ }
                 }

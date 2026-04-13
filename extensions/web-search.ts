@@ -17,7 +17,7 @@ interface SearxResponse {
 }
 
 async function fetchPage(url: string): Promise<string> {
-  const resp = await fetch(url);
+  const resp = await fetch(url, { signal: AbortSignal.timeout(15_000) });
   if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
   const html = await resp.text();
 
@@ -64,7 +64,7 @@ export default function (pi: ExtensionAPI) {
       const url = `${SEARXNG_URL}/search?q=${encodeURIComponent(params.query)}&format=json&categories=${encodeURIComponent(categories)}`;
 
       try {
-        const resp = await fetch(url);
+        const resp = await fetch(url, { signal: AbortSignal.timeout(10_000) });
         if (!resp.ok) {
           return {
             content: [{ type: "text" as const, text: `SearXNG error: HTTP ${resp.status}` }],

@@ -1,7 +1,7 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 export default function (pi: ExtensionAPI) {
-  const gatedTools = ["edit", "write", "bash"];
+  const gatedTools = ["edit", "write", "bash", "hash_edit"];
   const autoAccept = process.env.PI_AUTO_ACCEPT === "1";
 
   pi.on("tool_call", async (event, ctx) => {
