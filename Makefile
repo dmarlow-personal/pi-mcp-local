@@ -75,7 +75,7 @@ uninstall:
 ## Swap model: shared helper (call via model swap targets below)
 ## Usage: $(MAKE) _swap-model ID=... NAME=... CTX=... REASONING=...
 _swap-model:
-	@python3 -c "import json; mf='$(PI_DIR)/models.json'; sf='$(PI_DIR)/settings.json'; m=json.load(open(mf)); m['providers']['m1s1']['models']=[{'id':'$(ID)','name':'$(NAME)','reasoning':$(REASONING),'input':['text'],'contextWindow':$(CTX),'cost':{'input':0,'output':0,'cacheRead':0,'cacheWrite':0}}]; json.dump(m,open(mf,'w'),indent=2); s=json.load(open(sf)); s.update({'model':'$(ID)','defaultModel':'$(ID)'}); json.dump(s,open(sf,'w'),indent=2)"
+	@python3 -c "import json; mf='$(PI_DIR)/models.json'; sf='$(PI_DIR)/settings.json'; m=json.load(open(mf)); m['providers']['m1s1']['models']=[{'id':'$(ID)','name':'$(NAME)','reasoning':'$(REASONING)'=='true','input':['text'],'contextWindow':$(CTX),'cost':{'input':0,'output':0,'cacheRead':0,'cacheWrite':0}}]; json.dump(m,open(mf,'w'),indent=2); s=json.load(open(sf)); s.update({'model':'$(ID)','defaultModel':'$(ID)'}); json.dump(s,open(sf,'w'),indent=2)"
 	@echo "Switched to: $(NAME)"
 	@echo "  Model:   $(ID)"
 	@echo "  Context: $(CTX)"
@@ -87,7 +87,7 @@ gemma4:
 		ID="gemma-4-31B-it-UD-Q6_K_XL.gguf" \
 		NAME="Gemma 4 31B (M1:S1)" \
 		CTX=262144 \
-		REASONING=false
+		REASONING=true
 
 ## Swap to Qwen3.5 122B A10B
 qwen-122B:
