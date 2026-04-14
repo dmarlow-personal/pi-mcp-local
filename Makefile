@@ -9,8 +9,11 @@ deps:
 	@echo "=== Checking dependencies ==="
 	@python3 $(REPO_DIR)/scripts/check-deps.py $(REPO_DIR)/deps.json
 
-## Install: pull latest, copy config, register package
+## Install: pull latest, update pi binary, copy config, register package
 install: pull deps
+	@echo "=== Updating pi-coding-agent ==="
+	@npm install -g @mariozechner/pi-coding-agent 2>/dev/null && echo "  -> pi updated" || echo "  -> npm update failed (check permissions)"
+	@echo ""
 	@echo "=== Installing pi-mcp-local ==="
 	@mkdir -p $(PI_DIR)
 	@# Copy AGENTS.md (auto-loaded context file)
