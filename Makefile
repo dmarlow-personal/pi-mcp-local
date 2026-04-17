@@ -2,7 +2,7 @@ SHELL := /bin/bash
 PI_DIR := $(HOME)/.pi/agent
 REPO_DIR := $(shell pwd)
 
-.PHONY: install update uninstall status deps gemma4 qwen-122B
+.PHONY: install update uninstall status deps gemma4 qwen-122B qwen36
 
 ## Install external tool dependencies listed in deps.json
 deps:
@@ -97,6 +97,14 @@ qwen-122B:
 	@$(MAKE) --no-print-directory _swap-model \
 		ID="Qwen3.5-122B-A10B-UD-Q4_K_XL-00001-of-00003.gguf" \
 		NAME="Qwen3.5 122B A10B (M1:S1)" \
+		CTX=262144 \
+		REASONING=true
+
+## Swap to Qwen3.6 35B A3B
+qwen36:
+	@$(MAKE) --no-print-directory _swap-model \
+		ID="Qwen3.6-35B-A3B-UD-Q8_K_XL.gguf" \
+		NAME="Qwen3.6 35B A3B (M1:S1)" \
 		CTX=262144 \
 		REASONING=true
 
