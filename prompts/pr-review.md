@@ -119,7 +119,7 @@ conventions of the surrounding codebase.
    - Logging style (structured? log levels? what is logged where?)
    - Test patterns (fixture style, assertion style, mocking approach)
 4. Identify the entry points into each changed file. Who calls it? What does it call?
-   (Use `docs_get_dependencies` in Phase 3 for the actual map.)
+   (Phase 3 builds the actual caller map by grepping for imports and references.)
 
 Record what you learned. This seeds Phase 4 Pass 7 (Integration & Convention Fit) and
 biases Phase 6's New Hire persona.
@@ -130,16 +130,16 @@ biases Phase 6's New Hire persona.
 
 You have full tool access. Gather everything the Gemma panel will need.
 
-**3a. Map changed code (symbol index first, not file reads):**
+**3a. Map changed code (grep before full-file reads):**
 
 For each changed file:
-- `docs_search_symbols(module="<changed_file>")` -- all symbols in file
-- `docs_get_dependencies(module="<changed_file>")` -- imports and dependents
+- `Grep(pattern="^(class |def |function |interface |enum |const )", path=<file>)` --
+  enumerate declarations in the file
+- `Grep(pattern="^(import|from|require)", path=<file>)` -- imports the file brings in
+- `Grep(pattern="from ['\"]<module>|import.*<module>|require\\(['\"]<module>", path=<src-dir>)` --
+  callers of the changed module
 - `Read(file, offset=<changed_line-10>, limit=40)` -- targeted slices only. Never read
   full files to orient.
-
-**If the MCP symbol tools are unavailable,** fall back to `Grep` for symbol declarations
-and import statements, and announce degraded mode in the report.
 
 **3b. Research authoritative patterns:**
 
@@ -152,7 +152,7 @@ For named concepts (e.g., a service or pattern name) use GraphRAG first:
 - `docs_entity_neighbors(name="<concept>")` for adjacent techniques
 
 **3c. Map downstream impact:**
-- `docs_get_dependencies(module="<file>")` for each changed file
+- Use the caller grep from 3a to identify which modules import each changed file
 - Identify callers that could break from signature/behavior changes
 - Note interface changes that affect downstream consumers
 
@@ -192,8 +192,7 @@ Using Pass 6 findings plus coverage-gap detection from Phase 3:
 
 **5a. Identify untested changes.** Cross-reference changed public symbols with test
 directory:
-- `docs_search_symbols(query="<function_name>", module="tests/")` for each changed
-  symbol.
+- `Grep(pattern="<function_name>", path="tests/")` for each changed symbol.
 - Build `untested_changes = [{file, symbol, line, reason}]`.
 
 **5b. Generate tests.**
@@ -525,7 +524,7 @@ items and failed quality gates require resolution.
   response into another call.
 - **NEVER suggest lint/type suppressions as fixes** -- the code must change.
 - **NEVER modify tests to simply pass** -- tests verify correct behavior.
-- **Symbol search before file reads** -- AGENTS.md mandate (cheaper, more targeted).
+- **Grep before full-file reads** -- cheaper, more targeted than opening whole files.
 - **Two-stage MCP doc retrieval** -- `docs_semantic_search` then `docs_vault_document_read`.
 - **Gemini review runs in FRESH context** -- no conversation history leaks.
 - **No fabricated findings** -- empty severity buckets are valid signal.

@@ -26,16 +26,13 @@ docs_vault_write(
     content="...",
     tags=["adk", "tools"],
     source="https://...",
-    aliases=[...],
-    source_modules=["src/file.ts", ...],
-    source_hashes={"src/file.ts": "<hash>"}
+    aliases=[...]
 )
 ```
 
 - Generates YAML frontmatter (title, domain, tags, timestamps)
 - On update: preserves `created`, updates `modified`
 - Validates wikilinks within domain, warns on cross-domain
-- `source_modules` + `source_hashes` enable `docs_capture_status` to detect stale notes
 
 ### docs_vault_move
 
@@ -83,13 +80,8 @@ created: 2026-03-13T10:30:00+00:00
 modified: 2026-03-13T10:30:00+00:00
 source: ""
 aliases: []
-source_modules: []
-source_hashes: {}
 ---
 ```
-
-`source_modules` and `source_hashes` are populated by `/capture` and consumed by
-`docs_capture_status` to detect which notes have gone stale relative to the code.
 
 ---
 

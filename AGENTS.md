@@ -45,23 +45,6 @@ targeted first, broadest last. Do not skip ahead.
 
 Non-trivial tasks require research before code. Trivial tasks (typo, rename, one-liner) skip this.
 
-## Step 0 -- Symbol search FIRST (mandatory before reading code)
-
-Do not read files to orient yourself. The symbol index exists to prevent that.
-Use it to find exact locations, then read only the specific lines you need.
-
-Navigate code (before opening any file):
-- `docs_search_symbols(query="handler")` -- find classes, functions, methods by name, line, signature
-- `docs_search_symbols(kind="class", module="src/adapters")` -- map classes in a module without reading it
-- `docs_get_dependencies(module="src/server.ts")` -- see imports and dependents before tracing call chains
-
-The pattern:
-1. `docs_search_symbols` to find the symbol and its exact location
-2. `Read(file, offset=line-5, limit=30)` to see only the relevant code
-3. `docs_get_dependencies` if you need to understand what connects to it
-
-Never: `Read` an entire file to "understand the codebase". Always: search symbols, read the slice.
-
 ## Step 1 -- MCP docs (patterns, principles, architecture)
 
 Two-stage retrieval, always:
@@ -114,7 +97,7 @@ Use when MCP docs and Context7 lack coverage. Validates and reinforces, doesn't 
 
 ## Enforcement
 
-Non-trivial tasks with Steps 0-1 skipped --
+Non-trivial tasks with Step 1 skipped --
 output "I need to research before implementing. Proceed with search?"
 
 Query construction -- use 3-5 specific keywords, not vague single words.
@@ -146,14 +129,6 @@ All MCP docs tools are prefixed `docs_` and available via the MCP docs extension
 - `docs_documents_mentioning` -- distinct docs that mention an entity, density-sorted
 - `docs_entity_community` -- which Leiden communities contain an entity, with summaries
 - `docs_search_communities` -- semantic search over community summaries (cheap topical orientation)
-
-## Codebase navigation
-
-- `docs_search_symbols` -- FTS5 on symbol names, signatures, docstrings
-- `docs_get_dependencies` -- module import/dependent graph
-- `docs_analyze_codebase` -- full codebase analysis, persists to index (skill-gated via `/skill:symbols`)
-- `docs_extract_symbols` -- ephemeral tree-sitter parse (skill-gated via `/skill:symbols`)
-- `docs_capture_status` -- diff vault notes against symbol index hashes
 
 ## Personal notes (user's Obsidian vault -- NOT part of the research pipeline)
 
@@ -211,7 +186,6 @@ Available skills (loaded from `skills/`, invoked via `/skill:<name>`):
 
 - `/skill:resources` -- MCP docs library reference: book inventory, search strategies, domain mapping
 - `/skill:vault` -- write / move vault notes (gates `docs_vault_write`, `docs_vault_move`)
-- `/skill:symbols` -- tree-sitter extraction (gates `docs_extract_symbols`, `docs_analyze_codebase`)
 - `/skill:assist` -- local Gemma 4 peer reviewer (gates `docs_assist`)
 - `/skill:security-audit` -- dependency security audit (gates `docs_audit_repo_security`)
 - `/skill:gemini` -- query Gemini CLI for peer review or alternative perspectives

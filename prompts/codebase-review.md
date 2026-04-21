@@ -98,19 +98,14 @@ constantly reaching for other files. Good blocks have:
 - A natural correspondence to the codebase's structure -- a package, module, bounded
   context, or architectural layer.
 
-**Symbol-first discipline (AGENTS.md mandate):** map the codebase via symbol index
-*before* reading any files.
+**Map the codebase with Grep before reading full files.**
 
-- `docs_search_symbols(kind="class")` -- all classes, modules, line numbers
-- `docs_search_symbols(kind="function")` -- top-level functions
-- `docs_search_symbols(kind="dataclass")` -- data structures
-- `docs_search_symbols(kind="protocol")` -- interfaces and contracts
-- `docs_search_symbols(kind="enum")` -- enumerations
-- `docs_search_symbols(kind="constant")` -- module-level constants
+- `Grep(pattern="^(class |def |function |interface |enum )", path=<dir>)` -- enumerate
+  top-level declarations per module
+- `Grep(pattern="^(import|from|require)", path=<dir>)` -- trace cross-module imports
 
-Then the dependency graph:
+Then the dependency graph (built by hand from the import grep):
 
-- `docs_get_dependencies(module="<file>")` for each module
 - Map ALL cross-module relationships
 - Flag circular dependencies (always a finding)
 - Compute per-module coupling metrics:
@@ -118,8 +113,8 @@ Then the dependency graph:
   - Ce (efferent): how many modules this one depends on
   - Instability: Ce / (Ca + Ce) -- 0.0 stable, 1.0 unstable
 
-**If the MCP symbol tools are unavailable,** fall back to `Grep` for declarations and
-import statements, and announce degraded mode in `progress.md`.
+Prefer targeted `Read(file, offset, limit)` slices over whole-file reads once Grep has
+told you which lines matter.
 
 **Choose the segmentation strategy that fits this repository:**
 
@@ -236,8 +231,7 @@ For each block, in leaves-first order:
    - `docs_vault_document_read(file_path, section="...")` for full text
    - `docs_list_code_examples(language="<lang>")` for reference implementations
 
-   Graph lookups are cheap no-ops when extraction hasn't run -- don't gate the pass
-   on them.
+   Graph lookups are cheap no-ops when extraction hasn't run -- don't gate the pass on them.
 
 5. **Write findings to `.audit/findings/<block-id>.md`** in scrutinize's
    severity-sectioned format. Prepend a header:
@@ -672,7 +666,8 @@ Keep this file under 500 lines. Large audits spill detail into `findings/` and
 
 ## Key Constraints
 
-- **Symbol search BEFORE file reads** -- AGENTS.md mandate, always.
+- **Grep for declarations/imports BEFORE full-file reads** -- build the map first, then
+  slice in targeted reads.
 - **Two-stage MCP doc retrieval** -- `docs_semantic_search` then `docs_vault_document_read`.
 - **Gemma (`docs_assist`) CANNOT call MCP tools** -- pre-collect evidence in Phases 1-4.
 - **Run the three Gemma persona calls independently** -- do NOT feed one persona's

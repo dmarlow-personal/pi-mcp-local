@@ -236,7 +236,6 @@ Graph / community layer (GraphRAG -- read-only, use by query shape):
 - `docs_entity_community` -- which Leiden communities contain an entity, with LLM summaries.
 
 Skill-gated:
-- `/skill:symbols` -- `docs_extract_symbols`, `docs_analyze_codebase` (AST reindex)
 - `/skill:vault` -- `docs_vault_write`, `docs_vault_move`
 - `/skill:assist` -- `docs_assist` (Gemma 4 peer reviewer)
 - `/skill:security-audit` -- `docs_audit_repo_security`

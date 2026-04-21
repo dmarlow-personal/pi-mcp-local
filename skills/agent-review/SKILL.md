@@ -32,11 +32,11 @@ persona's output into another.
 
 You (Claude) have full tool access. Collect everything validators will need.
 
-**1a. Map the codebase (symbol index first, not file reads):**
-- `docs_search_symbols(kind="class")` -- class hierarchy
-- `docs_search_symbols(query="<relevant term>")` -- find key functions/methods
-- `docs_get_dependencies(module="<file under review>")` -- import/dependent graph
-- `Read(file, offset=line-5, limit=30)` -- targeted slices only
+**1a. Map the codebase:**
+- `Grep(pattern="class |function |def |const ", path=...)` -- enumerate declarations
+- `Grep(pattern="import|require|from ", path=...)` -- trace cross-module relationships
+- `Read(file, offset=line-5, limit=30)` -- targeted slices only; prefer small slices
+  over whole-file reads
 
 **1b. Research authoritative patterns:**
 - `docs_semantic_search(query="<relevant pattern>")` -- breadcrumbs
@@ -175,7 +175,7 @@ Evaluate (apply OWASP Top 10 and Defense in Depth):
   pre-collected in Phase 1 and passed in the `code` argument.
 - Run the three persona calls independently. Do NOT feed one persona's response into
   the next call.
-- Use `docs_search_symbols` before reading files (cheaper, more targeted).
+- Prefer targeted Read slices (with line offsets from Grep) over full-file reads.
 - Two-stage retrieval for MCP docs (`docs_semantic_search` then `docs_vault_document_read`).
 - Three validators is sufficient for consensus -- more adds overhead without improving
   signal.

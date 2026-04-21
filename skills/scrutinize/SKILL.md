@@ -57,8 +57,8 @@ in this order:
 **For an entire repository:** use **dependency-graph chunking**, leaves first.
 
 1. Run `!git ls-files` (or `find . -type f`) and build a mental map of the module structure.
-2. Identify leaf modules (no internal dependencies on other project code) via
-   `docs_get_dependencies`.
+2. Identify leaf modules (no internal dependencies on other project code) by grepping
+   imports and mapping them manually, or by reading module-level imports.
 3. Review leaves first -- they set the vocabulary the rest of the code uses. A bad
    abstraction in a leaf poisons everything upstream.
 4. Walk up the dependency graph. For each module, you already have context from its
@@ -86,8 +86,8 @@ wrong critique.
    (naming, error handling style, test patterns). **This is critical.** The most common
    AI-code failure is code that is correct in isolation but ignores the conventions of
    the surrounding codebase.
-4. Identify the entry points into this chunk. Who calls it? What does it call? Use
-   `docs_get_dependencies` before reading files.
+4. Identify the entry points into this chunk. Who calls it? What does it call? Grep
+   for imports and callers before reading files.
 
 Only after reconnaissance do you start the review passes.
 

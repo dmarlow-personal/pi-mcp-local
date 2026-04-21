@@ -32,10 +32,9 @@ How will we know the bug is fixed? What edge cases to consider?
 ## Phase 2: Apply the 9 Rules
 
 **Rule 1 -- Understand the System**
-Map via symbol index first:
-- `docs_search_symbols(query="<error class or function>")` to locate definition
-- `docs_get_dependencies(module="<suspect file>")` for imports and dependents
-Then read only the relevant code slices.
+Locate the failing code via `Grep` for the error class/function, then read only the
+relevant slices. Trace imports/callers with another `Grep` pass rather than opening
+whole files.
 
 **Rule 2 -- Make It Fail**
 Create minimal reproduction case. Document exact steps. Identify trigger conditions.
@@ -48,7 +47,7 @@ For exact errors: `docs_search_all_docs(query="exact error message")`.
 **Rule 4 -- Divide and Conquer**
 Binary search through code/data. Isolate components. Test at boundaries.
 `git bisect` to find breaking commit.
-`docs_search_symbols` + `docs_get_dependencies` to narrow the call chain.
+`Grep` for callers and call sites to narrow the call chain.
 
 **Rule 5 -- Change One Thing at a Time**
 One change, test, observe. Revert if it doesn't help. Commit each attempt.

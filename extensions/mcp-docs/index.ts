@@ -200,13 +200,12 @@ export default function (pi: ExtensionAPI) {
         "vault_document_read",
         "list_code_examples",
         "list_documents",
-        "search_symbols",
-        "get_dependencies",
         "vault_search",
         "vault_read",
         "vault_write",
         "vault_list",
         "vault_move",
+        "assist",
       ]);
 
       for (const tool of tools) {
