@@ -1,11 +1,11 @@
 ---
-description: Deep PR review with deterministic gates, scrutinize 7-pass on the diff, test enforcement, 3-persona Gemma panel, and Gemini adversarial validation
+description: Deep PR review with deterministic gates, scrutinize 7-pass on the diff, test enforcement, 3-persona Qwen panel, and Gemini adversarial validation
 ---
 
 Orchestrate a 9-phase PR review of: $@
 
 Deterministic gates first, reconnaissance, context, `/skill:scrutinize` 7-pass on the
-diff, test enforcement, 3-persona Gemma panel via `docs_assist`, adversarial test
+diff, test enforcement, 3-persona Qwen panel via `docs_assist`, adversarial test
 generation, Gemini adversarial review, interactive report.
 
 **Prerequisite:** `/skill:scrutinize` must be installed. Phase 4 delegates to it.
@@ -29,7 +29,7 @@ Phase 5: Test Enforcement [BLOCKING]
   |  Generate tests for untested changes. Run them. Verify behavior.
   |  NEVER modify tests to simply pass.
   |
-Phase 6: Panel Review [3 Gemma personas via docs_assist -- independent calls]
+Phase 6: Panel Review [3 Qwen personas via docs_assist -- independent calls]
   |  Saboteur, New Hire, Security Auditor.
   |
 Phase 7: Adversarial Test Generation
@@ -128,18 +128,37 @@ biases Phase 6's New Hire persona.
 
 ## Phase 3: Context Gathering
 
-You have full tool access. Gather everything the Gemma panel will need.
+You have full tool access. Gather everything the Qwen panel will need.
 
-**3a. Map changed code (grep before full-file reads):**
+**3a. Map changed code (probe the bridge, then either load it or fall back):**
 
-For each changed file:
+```
+docs_cg_search(query="<symbol from the diff>")
+  -> "code-graph not reachable" / empty for known symbol
+       -> bridge unavailable. Use LSP (TypeScript) or Grep below. Don't retry.
+       -> Announce degraded mode in the report.
+  -> hits returned -> /skill:code-graph to unlock cg_get_symbol,
+                      cg_reachability, cg_communities_for_files, etc.
+```
+
+When the bridge is up:
+- `docs_cg_get_symbol(id=N)` -- full symbol card + 1-hop neighborhood
+  (callers, callees, siblings).
+- `docs_cg_reachability(id=N, direction="backward")` -- fan-in: what calls
+  this symbol. Use for blast-radius assessment on signature/behavior changes.
+- `docs_cg_communities_for_files(files=[...])` -- which subsystems do the
+  changed files touch.
+
+Bridge-down fallback (LSP for TypeScript, Grep otherwise):
+- `lsp_references` to find callers of a TypeScript symbol
 - `Grep(pattern="^(class |def |function |interface |enum |const )", path=<file>)` --
   enumerate declarations in the file
 - `Grep(pattern="^(import|from|require)", path=<file>)` -- imports the file brings in
 - `Grep(pattern="from ['\"]<module>|import.*<module>|require\\(['\"]<module>", path=<src-dir>)` --
   callers of the changed module
-- `Read(file, offset=<changed_line-10>, limit=40)` -- targeted slices only. Never read
-  full files to orient.
+
+After locating, `Read(file, offset=<changed_line-10>, limit=40)` for
+targeted slices only. Never read full files to orient.
 
 **3b. Research authoritative patterns:**
 
@@ -223,10 +242,10 @@ which symbols need tests and why generation failed.
 
 ---
 
-## Phase 6: Panel Review [3 GEMMA PERSONAS via docs_assist]
+## Phase 6: Panel Review [3 QWEN PERSONAS via docs_assist]
 
 pi-mcp-local has no subagent pool. Replace the 3-Sonnet panel with three **independent
-calls** to `docs_assist` (Gemma 4). Each call carries only the evidence package and a
+calls** to `docs_assist` (Qwen 3.6 27B). Each call carries only the evidence package and a
 persona charter -- no persona receives the others' responses.
 
 **Evidence package you prepare (pass as the `code` argument, JSON-encoded):**
@@ -239,7 +258,7 @@ persona charter -- no persona receives the others' responses.
 - MCP docs research findings (from Phase 3b)
 - Prior review findings from vault (if present)
 
-Gemma (via `docs_assist`) cannot call MCP tools. All evidence must be pre-collected.
+Qwen (via `docs_assist`) cannot call MCP tools. All evidence must be pre-collected.
 
 ### Persona 1: The Saboteur
 
@@ -362,7 +381,7 @@ If the diff cannot be broken by any of these, say so. That is itself useful sign
 
 ## Phase 8: Consensus & Gemini Adversarial Review
 
-**8a. Aggregate Gemma panel votes.**
+**8a. Aggregate Qwen panel votes.**
 
 Merge findings across the three persona calls. For overlapping findings (same file,
 same issue):
@@ -381,7 +400,7 @@ Weighted consensus scoring:
 **8b. Gemini adversarial review.**
 
 Gemini is the only reviewer in this pipeline with **independent evidence gathering**.
-Gemma (via `docs_assist`) is limited to the evidence package you packed; Gemini CLI
+Qwen (via `docs_assist`) is limited to the evidence package you packed; Gemini CLI
 runs with filesystem access and a ~1M-token context window. It can and should read the
 full files touched by the diff (not just the diff itself) and their immediate
 neighbours for convention context. Treat missed findings as at least as valuable as
@@ -400,7 +419,7 @@ cat /tmp/pr_review_context.json | \
 Adversarial prompt:
 
 ```
-You are the fourth reviewer on this PR. Unlike the three Gemma panel personas
+You are the fourth reviewer on this PR. Unlike the three Qwen panel personas
 -- which are limited to the evidence package -- you can read files directly.
 Use that. Before evaluating panel findings, independently read the full source
 of every file in the changed-files list (not just the diff hunks), plus 1-2
@@ -492,7 +511,7 @@ TEST RESULTS:
 2. ...
 
 ### Adversarial Counterpoints
-[Where Gemini disagreed with the Gemma panel -- present both arguments]
+[Where Gemini disagreed with the Qwen panel -- present both arguments]
 
 ### Action Plan
 **Immediate** (blocks merge):
@@ -519,8 +538,8 @@ items and failed quality gates require resolution.
 ## Key Constraints
 
 - **Phase 1 gates are BLOCKING** -- never skip or soften them.
-- **Gemma (`docs_assist`) cannot call MCP tools** -- evidence pre-collected in Phase 3.
-- **Run the three Gemma persona calls independently** -- do NOT feed one persona's
+- **Qwen (`docs_assist`) cannot call MCP tools** -- evidence pre-collected in Phase 3.
+- **Run the three Qwen persona calls independently** -- do NOT feed one persona's
   response into another call.
 - **NEVER suggest lint/type suppressions as fixes** -- the code must change.
 - **NEVER modify tests to simply pass** -- tests verify correct behavior.

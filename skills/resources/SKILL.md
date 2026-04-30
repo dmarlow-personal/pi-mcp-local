@@ -156,6 +156,14 @@ Stop and think. Identify:
    Graph tools no-op when extraction hasn't populated the index; fall through to book/article
    searches if they return empty.
 
+   **Section coverage caveat:** the doc graph indexes signal-dense sections only.
+   Books extract main body (skip front/back matter: preface, TOC, bibliography, glossary,
+   index, appendices). Papers extract abstract + intro + conclusion + discussion + summary
+   only. Entity-anchored retrieval on paper-body concepts or book reference apparatus
+   will return empty -- drop the `entity=` filter and use plain `docs_semantic_search`
+   in that case. All filtered material remains fully indexed for `docs_semantic_search`;
+   the filter only governs what feeds the entity graph.
+
 Write out the search plan before executing.
 
 ### Phase 2: Search Breadth Requirements
@@ -219,7 +227,10 @@ Always available (no skill required):
   Filter args: `entity=X` restricts to docs mentioning an entity;
   `link_boost=true` favors entity-dense chunks in the rerank.
 - `docs_vault_document_read` -- full section or page text (use after search)
-- `docs_search_all_docs` -- fast FTS5 keyword search (exact text)
+- `docs_search_all_docs` -- fast FTS5 keyword search. Pass `rewrite=false` for true
+  exact-text lookups (error strings, identifiers, library symbols); the default
+  `rewrite=true` rewrites the query into prose via local LLM and is closer to topical
+  search than exact match.
 - `docs_list_code_examples` -- code from authoritative books
 - `docs_list_documents` -- document inventory by category
 - `docs_get_document_metadata` -- document details (size, pages)
@@ -235,10 +246,31 @@ Graph / community layer (GraphRAG -- read-only, use by query shape):
 - `docs_entities_in_document` -- who/what index for one document (optional section scope).
 - `docs_entity_community` -- which Leiden communities contain an entity, with LLM summaries.
 
+Code-graph bridge (optional -- only available when `CODE_GRAPH_URL` is set
+on the upstream MCP server and the target repo has been indexed via
+`code-graph index`. Most repos won't have it. Probe once with
+`docs_cg_search`; on "not reachable" or empty hits for known symbols,
+fall through to LSP / Grep + targeted `Read`):
+- `docs_cg_search` -- FTS5 substring search on symbol names + signatures (probe + entry)
+- `docs_cg_get_symbol` -- full symbol card + 1-hop neighborhood
+- `docs_cg_reachability` -- N-hop forward / backward call-graph flood
+- `docs_cg_adjacency` -- sibling symbols (sharing callers)
+- `docs_cg_orphans`, `docs_cg_unused_exports` -- dead-code filters
+
+Code communities (after `code-graph build-communities` + `build-summaries`):
+- `docs_cg_symbol_community`, `docs_cg_communities_at_level`, `docs_cg_community`
+- `docs_cg_communities_for_files`, `docs_cg_search_communities`
+
+Cross-graph (after `mcp-docs-extract-entities link-cross-graph`):
+- `docs_cg_links_for_community` -- doc-side hits linked to a code subsystem
+- `docs_cg_links_for_doc` -- reverse: code subsystems implementing a doc concept
+
 Skill-gated:
 - `/skill:vault` -- `docs_vault_write`, `docs_vault_move`
-- `/skill:assist` -- `docs_assist` (Gemma 4 peer reviewer)
+- `/skill:assist` -- `docs_assist` (Qwen 3.6 27B peer reviewer)
 - `/skill:security-audit` -- `docs_audit_repo_security`
+- `/skill:code-graph` -- the full `docs_cg_*` toolkit (load only after a
+  successful bridge probe)
 
 ---
 

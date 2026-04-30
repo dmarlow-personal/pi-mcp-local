@@ -1,12 +1,12 @@
 ---
 name: assist
-description: Second-opinion code review and peer feedback from a local Gemma 4 LLM
+description: Second-opinion code review and peer feedback from a local Qwen 3.6 27B LLM
 ---
 
 # Assist Skill
 
-Get code review, peer feedback, or alternative perspectives from a local Gemma 4 model
-running as a standalone service via llama-server.
+Get code review, peer feedback, or alternative perspectives from a local Qwen 3.6 27B
+model running as a standalone service via llama-server.
 
 This is the pi-mcp-local equivalent of a subagent reviewer: when `/pr-review` or
 `/codebase-review` need independent "panel" voices (Architect, Reliability, Security),
@@ -20,7 +20,7 @@ they call `docs_assist` with distinct persona prompts rather than spawning subag
 /skill:assist [code or file reference]
 ```
 
-When invoked standalone, Claude will use the `docs_assist` tool to send code to Gemma 4
+When invoked standalone, Claude will use the `docs_assist` tool to send code to Qwen 3.6 27B
 for review. When invoked by `/pr-review` or `/codebase-review`, it runs as part of the
 panel-review phase with persona-specific prompts.
 
@@ -30,7 +30,7 @@ panel-review phase with persona-specific prompts.
 
 ### docs_assist
 
-Get code assistance from the local Gemma 4 LLM.
+Get code assistance from the local Qwen 3.6 27B LLM.
 
 ```
 docs_assist(
@@ -88,7 +88,7 @@ docs_assist(
 
 `/pr-review` and `/codebase-review` replace the 3-Sonnet subagent panel with three
 sequential calls to `docs_assist`, each carrying a distinct persona prompt. The calls
-are independent: Gemma 4 receives only the evidence package and a persona charter,
+are independent: Qwen 3.6 27B receives only the evidence package and a persona charter,
 with no memory of the other personas' responses.
 
 Example persona wrapper (issued by the review skills, not by the user directly):
@@ -114,15 +114,15 @@ Aggregate votes across the three calls exactly as a 3-Sonnet panel would (see
 
 ## Configuration
 
-The assist tool requires a Gemma 4 llama-server instance running on the assist port with
-a code-specialized model.
+The assist tool requires a Qwen 3.6 27B llama-server instance running on the assist port
+with a code-specialized model.
 
 **Environment variables:**
 - `SECOND_OPINION_ENABLED` -- enable/disable the tool (default: true)
 - `SECOND_OPINION_HOST` -- server URL
 - `SECOND_OPINION_TIMEOUT` -- request timeout in seconds (default: 120)
 
-**Start the server:** `make toolbox-start` (or the Gemma 4 target configured in the Makefile).
+**Start the server:** `make toolbox-start` (or the Qwen 3.6 27B target configured in the Makefile).
 
 ---
 

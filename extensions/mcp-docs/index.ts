@@ -195,17 +195,46 @@ export default function (pi: ExtensionAPI) {
 
       // Only register tools pi actually needs — allowlist approach
       const allowTools = new Set([
+        // Document retrieval
         "semantic_search",
         "search_all_docs",
         "vault_document_read",
         "list_code_examples",
         "list_documents",
+        "get_document_metadata",
+        // Personal vault notes
         "vault_search",
         "vault_read",
         "vault_write",
         "vault_list",
         "vault_move",
+        // Doc-graph (entity + community layer, GraphRAG)
+        "entity_lookup",
+        "entity_neighbors",
+        "entity_community",
+        "entities_in_document",
+        "documents_mentioning",
+        "search_communities",
+        // Code-graph bridge (optional — only useful when CODE_GRAPH_URL
+        // is set on the upstream MCP server and the target repo has
+        // been indexed via `code-graph index`. Probe with cg_search;
+        // on miss, fall through to LSP/Grep)
+        "cg_search",
+        "cg_get_symbol",
+        "cg_reachability",
+        "cg_adjacency",
+        "cg_symbol_community",
+        "cg_communities_for_files",
+        "cg_community",
+        "cg_communities_at_level",
+        "cg_orphans",
+        "cg_unused_exports",
+        "cg_search_communities",
+        "cg_links_for_community",
+        "cg_links_for_doc",
+        // Peer review + security audit
         "assist",
+        "audit_repo_security",
       ]);
 
       for (const tool of tools) {

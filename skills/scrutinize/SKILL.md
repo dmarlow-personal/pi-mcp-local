@@ -311,12 +311,12 @@ This skill is the single source of truth for the 7-pass adversarial methodology.
 other prompts delegate here:
 
 - **`/codebase-review`** applies Phases 1-4 per block during its audit loop, and wraps
-  the results with block segmentation, `.audit/` tracking, a 3-persona Gemma panel
+  the results with block segmentation, `.audit/` tracking, a 3-persona Qwen panel
   (via `docs_assist`), Gemini adversarial review, cross-block synthesis, and a Refactor
   Readiness Report.
 - **`/pr-review`** applies Phases 3-4 scoped to the diff, and wraps the results with
   deterministic gates (secrets / lint / types / ratchet), test enforcement, a 3-persona
-  Gemma panel (via `docs_assist`), and Gemini adversarial review.
+  Qwen panel (via `docs_assist`), and Gemini adversarial review.
 
 Edits to the 7-pass methodology here propagate to both. When invoked standalone via
 `/skill:scrutinize`, emit the full Phase-5 report -- no panel, no Gemini, no tracking.

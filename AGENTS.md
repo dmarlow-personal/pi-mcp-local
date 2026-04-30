@@ -59,6 +59,32 @@ docs_vault_document_read(file_path="Books/microservice-pattern.pdf",
 Never skip stage two. Breadcrumbs alone lack implementation detail.
 ALWAYS pass section as a plain string. ALWAYS specify section OR page.
 
+## Step 1.0 -- Symbol search (when the task touches code)
+
+For non-trivial code work, locate the affected symbols *before* reading files.
+Two surfaces are available; pick by the question shape:
+
+**LSP (TypeScript-only, always available):**
+- `lsp_definition` -- go to definition. `lsp_references` -- find callers.
+- `lsp_hover` -- type signature. `lsp_diagnostics` -- type errors.
+
+**Code-graph bridge (optional, cross-language, whole-repo):**
+The bridge is gated through `/skill:code-graph` -- it's only useful when the
+upstream MCP server has `CODE_GRAPH_URL` set and the target repo has been
+indexed. Most repos won't have it. Probe-then-load:
+
+```
+docs_cg_search(query="<a symbol you expect to exist>")
+  -> "code-graph not reachable" / empty for known symbol
+       -> bridge unavailable. Don't retry. Don't load /skill:code-graph.
+          Use LSP (TypeScript) or Grep + targeted Read.
+  -> hits returned -> bridge is up. /skill:code-graph to unlock the rest
+                      (cg_get_symbol, cg_reachability, cg_communities_*,
+                      cg_orphans, cg_links_*, etc.).
+```
+
+See `skills/code-graph/SKILL.md` for the full toolkit + usage patterns.
+
 ## Step 1.5 -- Graph exploration (entity + community layer, GraphRAG)
 
 Route by query shape, not as a default override:
@@ -77,9 +103,19 @@ Route by query shape, not as a default override:
 Graph tools return nothing useful until extraction has run against the corpus -- if they're
 empty, fall through to Step 1. Nothing here writes; these are all read tools.
 
+**Section coverage caveat:** the doc graph indexes signal-dense sections only. Books
+extract main body (skip front/back matter: preface, TOC, bibliography, glossary, index,
+appendices). Papers extract abstract + intro + conclusion + discussion + summary only.
+Entity-anchored retrieval on paper-body concepts (middle-section techniques, deep
+benchmarks) or book reference apparatus will return empty -- drop the `entity=` filter
+and use plain `docs_semantic_search` for those cases. All filtered material remains fully
+indexed for `docs_semantic_search`; the filter only governs what feeds the entity graph.
+
 ## Step 2 -- Keyword search (exact terms, error messages, function names)
 
-- `docs_search_all_docs(query="CQRS")` -- FTS5 keyword search
+- `docs_search_all_docs(query="exact text", rewrite=false)` -- FTS5 keyword search.
+  **Default `rewrite=true` rewrites the query into prose via local LLM** -- pass
+  `rewrite=false` for true exact-text lookups (error strings, identifiers, library symbols).
 - Returns snippets with page numbers. Use page numbers in Step 1's `vault_document_read`.
 
 ## Step 3 -- Context7 (library APIs, framework syntax)
@@ -140,12 +176,33 @@ All MCP docs tools are prefixed `docs_` and available via the MCP docs extension
 
 ## Peer review (second-opinion LLM)
 
-- `docs_assist` -- local Gemma 4 code reviewer via llama-server (skill-gated via `/skill:assist`).
+- `docs_assist` -- local Qwen 3.6 27B code reviewer via llama-server (skill-gated via `/skill:assist`).
   Replaces subagent panel reviewers in `/pr-review` and `/codebase-review`.
 
 ## Security audit
 
 - `docs_audit_repo_security` -- full dependency security audit (skill-gated via `/skill:security-audit`)
+
+## Code-graph bridge (skill-gated via `/skill:code-graph`)
+
+Optional toolkit for whole-repo, cross-language symbol intelligence. All tools
+are prefixed `docs_cg_`. Only available when `CODE_GRAPH_URL` is set on the
+upstream MCP server and the target repo has been indexed.
+
+- `docs_cg_search` -- FTS5 substring search over symbol names + signatures (probe + entry point)
+- `docs_cg_get_symbol` -- full symbol card + 1-hop neighborhood
+- `docs_cg_reachability` -- N-hop forward/backward call-graph flood
+- `docs_cg_adjacency` -- siblings sharing callers
+- `docs_cg_orphans` / `docs_cg_unused_exports` -- dead-code filters
+- `docs_cg_communities_at_level` / `docs_cg_community` / `docs_cg_symbol_community`
+  -- code subsystems (after `code-graph build-communities`)
+- `docs_cg_communities_for_files` -- which subsystems do these files touch
+- `docs_cg_search_communities` -- semantic search over community summaries
+- `docs_cg_links_for_community` / `docs_cg_links_for_doc` -- cross-graph links
+  between code subsystems and doc-side entities (after `link-cross-graph`)
+
+Use `/skill:code-graph` only after a successful `docs_cg_search` probe. See
+`skills/code-graph/SKILL.md` for the full pattern.
 
 ## LSP (TypeScript language intelligence -- navigate code without reading whole files)
 
@@ -186,12 +243,13 @@ Available skills (loaded from `skills/`, invoked via `/skill:<name>`):
 
 - `/skill:resources` -- MCP docs library reference: book inventory, search strategies, domain mapping
 - `/skill:vault` -- write / move vault notes (gates `docs_vault_write`, `docs_vault_move`)
-- `/skill:assist` -- local Gemma 4 peer reviewer (gates `docs_assist`)
+- `/skill:assist` -- local Qwen 3.6 27B peer reviewer (gates `docs_assist`)
 - `/skill:security-audit` -- dependency security audit (gates `docs_audit_repo_security`)
+- `/skill:code-graph` -- code-graph bridge toolkit (gates `docs_cg_*` -- only useful when bridge is configured)
 - `/skill:gemini` -- query Gemini CLI for peer review or alternative perspectives
 - `/skill:scrutinize` -- single source of truth for the 7-pass adversarial review methodology
 - `/skill:agent-check` -- structural checklist for ADK agent repos
-- `/skill:agent-review` -- 3-persona consensus review via local Gemma panels
+- `/skill:agent-review` -- 3-persona consensus review via local Qwen panels
 
 Available prompts (slash commands, registered from `prompts/`):
 

@@ -77,11 +77,11 @@ Both tools are peer reviewers, but they serve different phases:
 
 | Tool | Invoked by | Role | Independence |
 |------|------------|------|--------------|
-| `docs_assist` (Gemma 4, local) | `/skill:assist`, panel phases of `/pr-review` and `/codebase-review` | Three-persona panel validator | Limited to evidence package provided |
+| `docs_assist` (Qwen 3.6 27B, local) | `/skill:assist`, panel phases of `/pr-review` and `/codebase-review` | Three-persona panel validator | Limited to evidence package provided |
 | `gemini` CLI (remote) | `/skill:gemini`, adversarial phases of review skills | Fourth reviewer with independent file reads | Full filesystem access, fresh context |
 
 Use Gemini when you need a reviewer that can independently open files and read neighbours
-to challenge the panel's digest. Use Gemma (`docs_assist`) when you need three parallel
+to challenge the panel's digest. Use Qwen (`docs_assist`) when you need three parallel
 persona votes on a pre-collected evidence package.
 
 ---

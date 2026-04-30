@@ -1,5 +1,5 @@
 ---
-description: Codebase-wide audit orchestrator. Segments the codebase into blocks, applies /skill:scrutinize per block, runs a 3-persona Gemma panel and Gemini adversarial validation, synthesizes cross-block patterns, and gates refactor recommendations on test coverage. Persistent and resumable via .audit/.
+description: Codebase-wide audit orchestrator. Segments the codebase into blocks, applies /skill:scrutinize per block, runs a 3-persona Qwen panel and Gemini adversarial validation, synthesizes cross-block patterns, and gates refactor recommendations on test coverage. Persistent and resumable via .audit/.
 argument-hint: [path | "resume" | "synthesize" | "coverage <block-id>" | --focus=<area>]
 ---
 
@@ -27,7 +27,7 @@ Phase 3: Coverage Assessment [per block]
 Phase 4: Per-Block Deep Review [/skill:scrutinize 7-pass, block isolation]
   |  Apply scrutinize methodology. Write findings/<block-id>.md.
   |
-Phase 5: Panel Review [3 Gemma personas via docs_assist -- independent calls]
+Phase 5: Panel Review [3 Qwen personas via docs_assist -- independent calls]
   |  Architect, Reliability Engineer, Security Auditor.
   |
 Phase 6: Cross-Block Synthesis [durable]
@@ -77,7 +77,7 @@ off block metadata.
 **Scope detection:**
 
 1. If path argument: scope to that directory/module.
-2. If `--focus=<area>`: weight the Gemma panel toward the focus area.
+2. If `--focus=<area>`: weight the Qwen panel toward the focus area.
 3. Default: entire `src/` directory.
 
 **Initial inventory (for the Phase 1 plan):**
@@ -98,13 +98,27 @@ constantly reaching for other files. Good blocks have:
 - A natural correspondence to the codebase's structure -- a package, module, bounded
   context, or architectural layer.
 
-**Map the codebase with Grep before reading full files.**
+**Map the codebase before reading full files.** Pick the cheapest navigator:
 
-- `Grep(pattern="^(class |def |function |interface |enum )", path=<dir>)` -- enumerate
-  top-level declarations per module
-- `Grep(pattern="^(import|from|require)", path=<dir>)` -- trace cross-module imports
+1. **Code-graph bridge** (cross-language, whole-repo, optional). Probe first:
+   ```
+   docs_cg_search(query="<known symbol>")
+     -> "code-graph not reachable" / empty -> bridge unavailable. Skip to LSP/Grep.
+     -> hits returned -> /skill:code-graph to unlock cg_get_symbol,
+                         cg_reachability, cg_communities_at_level (auto block
+                         segmentation), cg_orphans (dead-code surface), etc.
+   ```
+   When the bridge is up, `docs_cg_communities_at_level(level=1)` gives you a
+   ready-made block segmentation; `docs_cg_communities_for_files([...])` checks
+   your manual segmentation against the graph-derived one.
+2. **LSP** for in-file TypeScript queries (`lsp_definition`, `lsp_references`).
+3. **Grep + Read** fallback (always works):
+   - `Grep(pattern="^(class |def |function |interface |enum )", path=<dir>)` --
+     enumerate top-level declarations per module
+   - `Grep(pattern="^(import|from|require)", path=<dir>)` -- trace cross-module imports
 
-Then the dependency graph (built by hand from the import grep):
+Then the dependency graph (from cg_reachability when the bridge is up, or
+built by hand from the import grep when not):
 
 - Map ALL cross-module relationships
 - Flag circular dependencies (always a finding)
@@ -256,7 +270,7 @@ block. Cross-block patterns are surfaced deliberately in Phase 6.
 
 ---
 
-## Phase 5: Panel Review [3 GEMMA PERSONAS via docs_assist]
+## Phase 5: Panel Review [3 QWEN PERSONAS via docs_assist]
 
 pi-mcp-local has no subagent pool. Replace the 3-Sonnet panel with three **independent
 calls** to `docs_assist`. Each call carries only the evidence package and a persona
@@ -270,7 +284,7 @@ charter.
 - Relevant patterns from MCP docs research
 - Prior review findings from vault (if present)
 
-Gemma (via `docs_assist`) cannot call MCP tools. All evidence must be pre-collected.
+Qwen (via `docs_assist`) cannot call MCP tools. All evidence must be pre-collected.
 
 ### Persona 1: The Architect
 
@@ -412,7 +426,7 @@ full dependency picture is known.
 
 ## Phase 7: Adversarial Review [Gemini -- fresh context, independent evidence]
 
-Gemini is the only reviewer in this pipeline with independent evidence gathering. Gemma
+Gemini is the only reviewer in this pipeline with independent evidence gathering. Qwen
 (via `docs_assist`) is harness-limited to the pre-collected evidence; Gemini CLI runs
 with filesystem access in the repo and gemini-2.5-pro has a ~1M-token context window.
 It can and should read actual source files, not just digest what the panel summarized.
@@ -476,7 +490,7 @@ CODEBASE METRICS:
 
 ## Phase 8: Consensus & Refactor Readiness
 
-**8a. Aggregate Gemma panel votes.**
+**8a. Aggregate Qwen panel votes.**
 
 For overlapping findings (same file, same issue):
 - 3/3 personas flagged -> HIGH_CONFIDENCE
@@ -669,8 +683,8 @@ Keep this file under 500 lines. Large audits spill detail into `findings/` and
 - **Grep for declarations/imports BEFORE full-file reads** -- build the map first, then
   slice in targeted reads.
 - **Two-stage MCP doc retrieval** -- `docs_semantic_search` then `docs_vault_document_read`.
-- **Gemma (`docs_assist`) CANNOT call MCP tools** -- pre-collect evidence in Phases 1-4.
-- **Run the three Gemma persona calls independently** -- do NOT feed one persona's
+- **Qwen (`docs_assist`) CANNOT call MCP tools** -- pre-collect evidence in Phases 1-4.
+- **Run the three Qwen persona calls independently** -- do NOT feed one persona's
   response into another call.
 - **Gemini adversarial review runs in FRESH context** -- no history leaks from earlier
   phases.

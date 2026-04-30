@@ -11,6 +11,8 @@ Enter specification mode for: $@
 2. Clarify problem                    # Before research
 3. Write search plan                  # Document approach
 4. Research IN ORDER:
+   0. Code probe (only if spec touches existing code)
+      docs_cg_search -> on hit /skill:code-graph; on miss LSP/Grep
    a. Articles (file_type="md")       # New developments
    b. White Papers (file_type="pdf")  # Technical analysis
    c. Books (file_type="pdf")         # Best practices
@@ -86,6 +88,21 @@ Open Questions: [things needing clarification]
 ---
 
 ## Step 4: Execute Research
+
+### Code probe (when the spec touches existing code)
+
+If the spec involves changes to existing code, locate the affected symbols
+*before* researching patterns to apply:
+
+```
+docs_cg_search(query="<known symbol>")
+  -> "code-graph not reachable" / empty -> bridge unavailable;
+     fall through to LSP (TypeScript) or Grep. Don't retry.
+  -> hits returned -> /skill:code-graph to unlock cg_get_symbol,
+                      cg_reachability, cg_communities_for_files, etc.
+```
+
+Skip this phase entirely if the spec is greenfield.
 
 ### Graph-first routing
 

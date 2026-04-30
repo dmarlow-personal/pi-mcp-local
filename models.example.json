@@ -10,11 +10,11 @@
       },
       "models": [
         {
-          "id": "Qwen3.5-122B-A10B-UD-Q4_K_XL-00001-of-00003.gguf",
-          "name": "Qwen3.5 122B A10B (M1:S1)",
+          "id": "gemma-4-31B-it-UD-Q6_K_XL.gguf",
+          "name": "Gemma 4 31B Q6 + Q4 draft (M1:S1)",
           "reasoning": true,
           "input": ["text"],
-          "contextWindow": 262144,
+          "contextWindow": 131072,
           "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
         }
       ]

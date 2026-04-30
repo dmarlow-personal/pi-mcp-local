@@ -32,9 +32,20 @@ How will we know the bug is fixed? What edge cases to consider?
 ## Phase 2: Apply the 9 Rules
 
 **Rule 1 -- Understand the System**
-Locate the failing code via `Grep` for the error class/function, then read only the
-relevant slices. Trace imports/callers with another `Grep` pass rather than opening
-whole files.
+Locate the failing code. Pick the cheapest navigator:
+
+```
+docs_cg_search(query="<error class or function>")
+  -> "code-graph not reachable" / empty for known symbol
+       -> bridge unavailable. Use LSP (TypeScript) or Grep. Don't retry.
+  -> hits returned -> /skill:code-graph to unlock cg_get_symbol,
+                      cg_reachability, etc.
+```
+
+Then `Read(file, offset=line-5, limit=30)` for the slice. Trace imports/callers
+via `docs_cg_reachability(direction="backward")` when the bridge is up,
+`lsp_references` for TypeScript, or another `Grep` pass otherwise. Never open
+whole files to "orient".
 
 **Rule 2 -- Make It Fail**
 Create minimal reproduction case. Document exact steps. Identify trigger conditions.
@@ -42,12 +53,16 @@ Create minimal reproduction case. Document exact steps. Identify trigger conditi
 **Rule 3 -- Quit Thinking and Look**
 Observe actual behavior. Add logging at critical points. Use debugger. Check actual
 variable values -- don't assume.
-For exact errors: `docs_search_all_docs(query="exact error message")`.
+For exact errors: `docs_search_all_docs(query="exact error message", rewrite=false)`.
+The default `rewrite=true` rewrites the query into prose -- pass `rewrite=false`
+for true exact-text matching of error strings, identifiers, and library symbols.
 
 **Rule 4 -- Divide and Conquer**
 Binary search through code/data. Isolate components. Test at boundaries.
-`git bisect` to find breaking commit.
-`Grep` for callers and call sites to narrow the call chain.
+`git bisect` to find breaking commit. Narrow the call chain with the
+cheapest navigator available: `docs_cg_reachability(direction="backward")`
+when the bridge is up, `lsp_references` for TypeScript, or `Grep` for
+callers and call sites otherwise.
 
 **Rule 5 -- Change One Thing at a Time**
 One change, test, observe. Revert if it doesn't help. Commit each attempt.
@@ -62,7 +77,7 @@ Restarted after change? Editing the right file? Virtual env activated? Right run
 **Rule 8 -- Get a Fresh View**
 Rubber duck debugging. Take a break. Read code bottom to top.
 Optional: invoke `/skill:gemini` for an alternative perspective, or `/skill:assist`
-for a Gemma peer review of the suspected root-cause hypothesis.
+for a Qwen peer review of the suspected root-cause hypothesis.
 
 **Rule 9 -- If You Didn't Fix It, It Ain't Fixed**
 Test original reproduction case + edge cases. Run full test suite.

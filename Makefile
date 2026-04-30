@@ -2,7 +2,7 @@ SHELL := /bin/bash
 PI_DIR := $(HOME)/.pi/agent
 REPO_DIR := $(shell pwd)
 
-.PHONY: install update uninstall status deps gemma4 qwen-122B qwen36
+.PHONY: install update uninstall status deps gemma4 qwen-122B qwen-122B-draft qwen36
 
 ## Install external tool dependencies listed in deps.json
 deps:
@@ -84,20 +84,28 @@ _swap-model:
 	@echo "  Context: $(CTX)"
 	@echo "  Run /reload in pi to apply"
 
-## Swap to Gemma 4 31B
+## Swap to Gemma 4 31B Q6 + E4B Q4 draft (current daily-driver coder, 128K)
 gemma4:
 	@$(MAKE) --no-print-directory _swap-model \
 		ID="gemma-4-31B-it-UD-Q6_K_XL.gguf" \
-		NAME="Gemma 4 31B (M1:S1)" \
-		CTX=262144 \
+		NAME="Gemma 4 31B Q6 + Q4 draft (M1:S1)" \
+		CTX=131072 \
 		REASONING=true
 
-## Swap to Qwen3.5 122B A10B
+## Swap to Qwen3.5 122B A10B (single-model profile, 256K context)
 qwen-122B:
 	@$(MAKE) --no-print-directory _swap-model \
 		ID="Qwen3.5-122B-A10B-UD-Q4_K_XL-00001-of-00003.gguf" \
 		NAME="Qwen3.5 122B A10B (M1:S1)" \
 		CTX=262144 \
+		REASONING=true
+
+## Swap to Qwen3.5 122B A10B + 2B draft (spec decoding, 128K context, /assist shares server)
+qwen-122B-draft:
+	@$(MAKE) --no-print-directory _swap-model \
+		ID="Qwen3.5-122B-A10B-UD-Q4_K_XL-00001-of-00003.gguf" \
+		NAME="Qwen3.5 122B + 2B draft (M1:S1)" \
+		CTX=131072 \
 		REASONING=true
 
 ## Swap to Qwen3.6 35B A3B

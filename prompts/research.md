@@ -52,7 +52,10 @@ docs_semantic_search(query="...", max_results=10, hybrid=true)
 docs_vault_document_read(file_path="...", section="heading from results")
 ```
 
-For exact phrases: `docs_search_all_docs(query="exact phrase")`.
+For exact phrases / identifiers / error strings:
+`docs_search_all_docs(query="exact phrase", rewrite=false)`. The default
+`rewrite=true` rewrites the query into prose via local LLM -- pass
+`rewrite=false` for true exact-text matching.
 
 **1d. Extract findings:** principles, patterns, best practices, trade-offs, citations.
 
