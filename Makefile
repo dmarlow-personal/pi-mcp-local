@@ -2,7 +2,12 @@ SHELL := /bin/bash
 PI_DIR := $(HOME)/.pi/agent
 REPO_DIR := $(shell pwd)
 
-.PHONY: install update uninstall status deps gemma4 qwen-122B qwen-122B-draft qwen36
+# Silence `npm fund` / `npm audit` chatter from npm child processes
+# (pi update shells out to `npm install -g ...` internally)
+export npm_config_fund := false
+export npm_config_audit := false
+
+.PHONY: install update update-pi uninstall status deps gemma4 qwen-122B qwen-122B-draft qwen36
 
 ## Install external tool dependencies listed in deps.json
 deps:
@@ -10,9 +15,7 @@ deps:
 	@python3 $(REPO_DIR)/scripts/check-deps.py $(REPO_DIR)/deps.json
 
 ## Install: pull latest, update pi binary, copy config, register package
-install: pull deps
-	@echo "=== Updating pi-coding-agent ==="
-	@npm install -g @mariozechner/pi-coding-agent 2>/dev/null && echo "  -> pi updated" || echo "  -> npm update failed (check permissions)"
+install: pull deps update-pi
 	@echo ""
 	@echo "=== Installing pi-mcp-local ==="
 	@mkdir -p $(PI_DIR)
@@ -52,8 +55,20 @@ install: pull deps
 	@echo ""
 	@echo "Start pi to verify: pi"
 
-## Update: pull latest changes, sync AGENTS.md
-update: pull
+## Update pi binary + installed extensions via `pi update`.
+## Falls back to bootstrapping the npm package if pi isn't on PATH yet.
+update-pi:
+	@echo "=== Updating pi-coding-agent ==="
+	@if command -v pi >/dev/null 2>&1; then \
+		pi update && echo "  -> pi + extensions updated" || echo "  -> pi update failed"; \
+	else \
+		echo "  -> pi not on PATH, bootstrapping via npm"; \
+		npm install -g @earendil-works/pi-coding-agent && echo "  -> pi installed" || echo "  -> npm install failed (check permissions)"; \
+	fi
+
+## Update: pull latest changes, update pi, sync AGENTS.md
+update: pull update-pi
+	@echo ""
 	@echo "=== Updating pi-mcp-local ==="
 	@cp -v $(REPO_DIR)/AGENTS.md $(PI_DIR)/AGENTS.md
 	@echo "  -> AGENTS.md synced"
