@@ -7,7 +7,7 @@ REPO_DIR := $(shell pwd)
 export npm_config_fund := false
 export npm_config_audit := false
 
-.PHONY: install update update-pi uninstall status deps gemma4 qwen-122B qwen-122B-draft qwen36
+.PHONY: install update update-pi uninstall status deps gemma4 qwen-122B qwen-122B-draft qwen36 qwen-122B-mtp qwen-27B-mtp
 
 ## Install external tool dependencies listed in deps.json
 deps:
@@ -30,8 +30,8 @@ install: pull deps update-pi
 	fi
 	@# Set default provider and thinking level if not already configured
 	@if ! grep -q '"defaultProvider"' $(PI_DIR)/settings.json 2>/dev/null; then \
-		python3 -c "import json, os; f='$(PI_DIR)/settings.json'; d=json.load(open(f)) if os.path.exists(f) else {}; d.update({'provider':'m1s1','model':'Qwen3.5-122B-A10B-UD-Q4_K_XL-00001-of-00003.gguf','defaultProvider':'m1s1','defaultModel':'Qwen3.5-122B-A10B-UD-Q4_K_XL-00001-of-00003.gguf','defaultThinkingLevel':'high'}); json.dump(d,open(f,'w'),indent=2)"; \
-		echo "  -> Set default provider to m1s1 (Qwen3.5 122B Q4)"; \
+		python3 -c "import json, os; f='$(PI_DIR)/settings.json'; d=json.load(open(f)) if os.path.exists(f) else {}; d.update({'provider':'m1s1','model':'Qwen3.5-122B-A10B-MTP-UD-Q5_K_XL.gguf','defaultProvider':'m1s1','defaultModel':'Qwen3.5-122B-A10B-MTP-UD-Q5_K_XL.gguf','defaultThinkingLevel':'high'}); json.dump(d,open(f,'w'),indent=2)"; \
+		echo "  -> Set default provider to m1s1 (Qwen3.5 122B-A10B MTP Q5)"; \
 	else \
 		echo "  -> Default provider already configured, skipping"; \
 	fi
@@ -99,7 +99,23 @@ _swap-model:
 	@echo "  Context: $(CTX)"
 	@echo "  Run /reload in pi to apply"
 
-## Swap to Gemma 4 31B Q6 + E4B Q4 draft (current daily-driver coder, 128K)
+## Swap to Qwen3.5 122B-A10B MTP Q5 (PRIMARY daily-driver coder+assist, 128K, bf16 KV, MTP self-spec)
+qwen-122B-mtp:
+	@$(MAKE) --no-print-directory _swap-model \
+		ID="Qwen3.5-122B-A10B-MTP-UD-Q5_K_XL.gguf" \
+		NAME="Qwen3.5 122B A10B MTP Q5 (M1:S1, primary)" \
+		CTX=131072 \
+		REASONING=true
+
+## Swap to Qwen3.6 27B MTP Q8 (alt coder+assist, 192K context, slower but more headroom)
+qwen-27B-mtp:
+	@$(MAKE) --no-print-directory _swap-model \
+		ID="Qwen3.6-27B-MTP-UD-Q8_K_XL.gguf" \
+		NAME="Qwen3.6 27B MTP Q8 (M1:S1, alt)" \
+		CTX=196608 \
+		REASONING=true
+
+## Swap to Gemma 4 31B Q6 + E4B Q4 draft (legacy; replaced by Qwen MTP profiles)
 gemma4:
 	@$(MAKE) --no-print-directory _swap-model \
 		ID="gemma-4-31B-it-UD-Q6_K_XL.gguf" \
