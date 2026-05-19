@@ -37,13 +37,16 @@ You (Claude) have full tool access. Collect everything validators will need.
 Pick the cheapest navigator that fits the question. Three surfaces, ranked
 by cost-per-answer:
 
-1. **Code-graph bridge** (cross-language, whole-repo, optional). Probe first:
+1. **Code-graph** (cross-language, whole-repo, optional). Read-only `cg_*`
+   tools are exposed by the `mcp-code-graph` extension and callable
+   directly -- no `/skill:code-graph` round-trip needed. Probe first:
    ```
-   docs_cg_search(query="<known symbol>")
+   cg_current_selection()                          # if user said "this"
+   cg_search(query="<known symbol>")               # locate; capture id
      -> "code-graph not reachable" / empty for known symbol
-          -> bridge unavailable. Don't retry. Skip to LSP / Grep.
-     -> hits returned -> /skill:code-graph to unlock cg_get_symbol,
-                         cg_reachability, cg_communities_for_files, etc.
+          -> repo not enrolled. Skip to LSP / Grep. Don't retry.
+     -> hits returned -> call cg_get_symbol(id=N), cg_reachability(id=N),
+                         cg_communities_for_symbol(id=N) directly.
    ```
 2. **LSP** (TypeScript-only, always available). `lsp_definition`,
    `lsp_references`, `lsp_hover` for in-file and per-symbol queries.

@@ -246,31 +246,39 @@ Graph / community layer (GraphRAG -- read-only, use by query shape):
 - `docs_entities_in_document` -- who/what index for one document (optional section scope).
 - `docs_entity_community` -- which Leiden communities contain an entity, with LLM summaries.
 
-Code-graph bridge (optional -- only available when `CODE_GRAPH_URL` is set
-on the upstream MCP server and the target repo has been indexed via
-`code-graph index`. Most repos won't have it. Probe once with
-`docs_cg_search`; on "not reachable" or empty hits for known symbols,
-fall through to LSP / Grep + targeted `Read`):
-- `docs_cg_search` -- FTS5 substring search on symbol names + signatures (probe + entry)
-- `docs_cg_get_symbol` -- full symbol card + 1-hop neighborhood
-- `docs_cg_reachability` -- N-hop forward / backward call-graph flood
-- `docs_cg_adjacency` -- sibling symbols (sharing callers)
-- `docs_cg_orphans`, `docs_cg_unused_exports` -- dead-code filters
+Code-graph (separate MCP server via the `mcp-code-graph` extension --
+default `http://127.0.0.1:4753/mcp`, configured via `PI_CODE_GRAPH_URL`
++ `PI_CODE_GRAPH_TOKEN`). Read-only navigation tools are callable
+directly -- no `/skill:code-graph` round-trip needed. Probe once with
+`cg_search`; on "not reachable" or empty hits for known symbols, the
+target repo isn't enrolled -- fall through to LSP / Grep + targeted
+`Read`:
+- `cg_current_selection` -- what file/symbol the user is looking at in the
+  code-graph UI; default starting move when no explicit target was given
+- `cg_search` -- FTS5 substring search on symbol names + signatures (>= 3 chars)
+- `cg_get_symbol` -- full symbol card + 1-hop neighborhood (by `id` or `stable_id`)
+- `cg_reachability` -- N-hop forward / backward call-graph flood
+- `cg_adjacency` -- sibling symbols (sharing callers)
+- `cg_orphans`, `cg_unused_exports` -- dead-code filters
 
 Code communities (after `code-graph build-communities` + `build-summaries`):
-- `docs_cg_symbol_community`, `docs_cg_communities_at_level`, `docs_cg_community`
-- `docs_cg_communities_for_files`, `docs_cg_search_communities`
+- `cg_communities_for_symbol` -- which subsystems a symbol belongs to (L0/L1/L2)
+- `cg_community` -- full member + paginated symbol list for one community
+- `cg_search_communities` -- BM25/FTS5 search over community summaries
+- `cg_stale_communities` -- communities whose summaries are out of date
+  (curation worklist)
 
-Cross-graph (after `mcp-docs-extract-entities link-cross-graph`):
-- `docs_cg_links_for_community` -- doc-side hits linked to a code subsystem
-- `docs_cg_links_for_doc` -- reverse: code subsystems implementing a doc concept
+Cross-graph linking moved out-of-band (CLI:
+`mcp-docs-extract-entities link-cross-graph`). The previous
+`cg_links_*` MCP tools were removed when the in-process bridge retired.
 
 Skill-gated:
 - `/skill:vault` -- `docs_vault_write`, `docs_vault_move`
-- `/skill:assist` -- `docs_assist` (Qwen 3.6 27B peer reviewer)
+- `/skill:assist` -- `docs_assist` (Qwen via local llama-server peer reviewer)
 - `/skill:security-audit` -- `docs_audit_repo_security`
-- `/skill:code-graph` -- the full `docs_cg_*` toolkit (load only after a
-  successful bridge probe)
+- `/skill:code-graph` -- full reference + community curation writes
+  (`cg_set_community_summary`, `cg_set_community_keyterms`); read-only
+  `cg_*` are directly callable without loading the skill
 
 ---
 

@@ -130,26 +130,29 @@ biases Phase 6's New Hire persona.
 
 You have full tool access. Gather everything the Qwen panel will need.
 
-**3a. Map changed code (probe the bridge, then either load it or fall back):**
+**3a. Map changed code (call cg_* directly, or fall back to LSP/Grep):**
+
+Read-only `cg_*` tools are exposed by the `mcp-code-graph` extension --
+no `/skill:code-graph` round-trip needed. Probe first:
 
 ```
-docs_cg_search(query="<symbol from the diff>")
+cg_search(query="<symbol from the diff>")         # locate; capture id
   -> "code-graph not reachable" / empty for known symbol
-       -> bridge unavailable. Use LSP (TypeScript) or Grep below. Don't retry.
-       -> Announce degraded mode in the report.
-  -> hits returned -> /skill:code-graph to unlock cg_get_symbol,
-                      cg_reachability, cg_communities_for_files, etc.
+       -> repo not enrolled. Use LSP (TypeScript) or Grep below.
+          Announce degraded mode in the report. Don't retry.
+  -> hits returned -> call the navigation tools directly (see below).
 ```
 
-When the bridge is up:
-- `docs_cg_get_symbol(id=N)` -- full symbol card + 1-hop neighborhood
+When code-graph is reachable:
+- `cg_get_symbol(id=N)` -- full symbol card + 1-hop neighborhood
   (callers, callees, siblings).
-- `docs_cg_reachability(id=N, direction="backward")` -- fan-in: what calls
+- `cg_reachability(id=N, direction="backward")` -- fan-in: what calls
   this symbol. Use for blast-radius assessment on signature/behavior changes.
-- `docs_cg_communities_for_files(files=[...])` -- which subsystems do the
-  changed files touch.
+- `cg_communities_for_symbol(id=N, level=1)` -- which subsystems does
+  this symbol belong to. Loop over changed symbols to scope the review
+  to the right architectural cluster.
 
-Bridge-down fallback (LSP for TypeScript, Grep otherwise):
+Code-graph-down fallback (LSP for TypeScript, Grep otherwise):
 - `lsp_references` to find callers of a TypeScript symbol
 - `Grep(pattern="^(class |def |function |interface |enum |const )", path=<file>)` --
   enumerate declarations in the file

@@ -68,19 +68,21 @@ Two surfaces are available; pick by the question shape:
 - `lsp_definition` -- go to definition. `lsp_references` -- find callers.
 - `lsp_hover` -- type signature. `lsp_diagnostics` -- type errors.
 
-**Code-graph bridge (optional, cross-language, whole-repo):**
-The bridge is gated through `/skill:code-graph` -- it's only useful when the
-upstream MCP server has `CODE_GRAPH_URL` set and the target repo has been
-indexed. Most repos won't have it. Probe-then-load:
+**Code-graph (optional, cross-language, whole-repo):**
+Served by a separate MCP server via the `mcp-code-graph` extension when
+`PI_CODE_GRAPH_URL` is reachable and the target repo is enrolled. Tools
+have bare `cg_` prefix and read-only navigation is callable directly --
+no `/skill:code-graph` round-trip. Probe first:
 
 ```
-docs_cg_search(query="<a symbol you expect to exist>")
+cg_current_selection()                            # if user said "this"
+cg_search(query="<a symbol you expect to exist>")
   -> "code-graph not reachable" / empty for known symbol
-       -> bridge unavailable. Don't retry. Don't load /skill:code-graph.
-          Use LSP (TypeScript) or Grep + targeted Read.
-  -> hits returned -> bridge is up. /skill:code-graph to unlock the rest
-                      (cg_get_symbol, cg_reachability, cg_communities_*,
-                      cg_orphans, cg_links_*, etc.).
+       -> not enrolled. Use LSP (TypeScript) or Grep + targeted Read.
+  -> hits returned -> call cg_get_symbol(id=N), cg_reachability(id=N),
+                      cg_communities_for_symbol(id=N) directly. Only
+                      load /skill:code-graph for community curation
+                      writes (cg_set_community_*).
 ```
 
 See `skills/code-graph/SKILL.md` for the full toolkit + usage patterns.
@@ -183,26 +185,33 @@ All MCP docs tools are prefixed `docs_` and available via the MCP docs extension
 
 - `docs_audit_repo_security` -- full dependency security audit (skill-gated via `/skill:security-audit`)
 
-## Code-graph bridge (skill-gated via `/skill:code-graph`)
+## Code-graph (separate MCP server, mcp-code-graph extension)
 
-Optional toolkit for whole-repo, cross-language symbol intelligence. All tools
-are prefixed `docs_cg_`. Only available when `CODE_GRAPH_URL` is set on the
-upstream MCP server and the target repo has been indexed.
+Whole-repo, cross-language symbol intelligence served by a dedicated MCP
+server (default `http://127.0.0.1:4753/mcp`, configured via
+`PI_CODE_GRAPH_URL` + `PI_CODE_GRAPH_TOKEN`). Tools are exposed with bare
+`cg_` prefix (no `docs_` wrapping) and are callable directly -- no
+`/skill:code-graph` round-trip needed for read-only navigation.
 
-- `docs_cg_search` -- FTS5 substring search over symbol names + signatures (probe + entry point)
-- `docs_cg_get_symbol` -- full symbol card + 1-hop neighborhood
-- `docs_cg_reachability` -- N-hop forward/backward call-graph flood
-- `docs_cg_adjacency` -- siblings sharing callers
-- `docs_cg_orphans` / `docs_cg_unused_exports` -- dead-code filters
-- `docs_cg_communities_at_level` / `docs_cg_community` / `docs_cg_symbol_community`
-  -- code subsystems (after `code-graph build-communities`)
-- `docs_cg_communities_for_files` -- which subsystems do these files touch
-- `docs_cg_search_communities` -- semantic search over community summaries
-- `docs_cg_links_for_community` / `docs_cg_links_for_doc` -- cross-graph links
-  between code subsystems and doc-side entities (after `link-cross-graph`)
+Read-only navigation (no skill load needed):
+- `cg_current_selection` -- what file/symbol the user is looking at in the
+  code-graph UI; default starting move when no explicit target was given
+- `cg_search` -- FTS5 substring search over symbol names + signatures (>= 3 chars)
+- `cg_get_symbol` -- full symbol card + 1-hop neighborhood (by `id` or `stable_id`)
+- `cg_reachability` -- N-hop forward/backward call-graph flood
+- `cg_adjacency` -- siblings sharing callers
+- `cg_orphans` / `cg_unused_exports` -- dead-code filters
+- `cg_communities_for_symbol` -- which subsystems a symbol belongs to
+- `cg_community` -- full member + file list for one community
+- `cg_search_communities` -- BM25/FTS5 search over community summaries
+- `cg_stale_communities` -- communities with out-of-date summaries (curation worklist)
 
-Use `/skill:code-graph` only after a successful `docs_cg_search` probe. See
-`skills/code-graph/SKILL.md` for the full pattern.
+Community curation writes (load `/skill:code-graph` for the full pattern):
+- `cg_set_community_summary`, `cg_set_community_keyterms`
+
+If `cg_search` for a known symbol returns empty / "code-graph not reachable",
+the target repo isn't enrolled -- fall back to `lsp_*` (TypeScript only) or
+`Grep`. See `skills/code-graph/SKILL.md` for the full pattern catalogue.
 
 ## LSP (TypeScript language intelligence -- navigate code without reading whole files)
 
@@ -245,7 +254,7 @@ Available skills (loaded from `skills/`, invoked via `/skill:<name>`):
 - `/skill:vault` -- write / move vault notes (gates `docs_vault_write`, `docs_vault_move`)
 - `/skill:assist` -- local Qwen 3.6 27B peer reviewer (gates `docs_assist`)
 - `/skill:security-audit` -- dependency security audit (gates `docs_audit_repo_security`)
-- `/skill:code-graph` -- code-graph bridge toolkit (gates `docs_cg_*` -- only useful when bridge is configured)
+- `/skill:code-graph` -- code-graph reference + community curation writes (read-only `cg_*` tools are directly callable, no skill load needed)
 - `/skill:gemini` -- query Gemini CLI for peer review or alternative perspectives
 - `/skill:scrutinize` -- single source of truth for the 7-pass adversarial review methodology
 - `/skill:agent-check` -- structural checklist for ADK agent repos

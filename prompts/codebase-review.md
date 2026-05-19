@@ -100,25 +100,30 @@ constantly reaching for other files. Good blocks have:
 
 **Map the codebase before reading full files.** Pick the cheapest navigator:
 
-1. **Code-graph bridge** (cross-language, whole-repo, optional). Probe first:
+1. **Code-graph** (cross-language, whole-repo, optional). Read-only `cg_*`
+   tools are callable directly via the `mcp-code-graph` extension -- no
+   `/skill:code-graph` round-trip needed. Probe first:
    ```
-   docs_cg_search(query="<known symbol>")
-     -> "code-graph not reachable" / empty -> bridge unavailable. Skip to LSP/Grep.
-     -> hits returned -> /skill:code-graph to unlock cg_get_symbol,
-                         cg_reachability, cg_communities_at_level (auto block
-                         segmentation), cg_orphans (dead-code surface), etc.
+   cg_search(query="<known symbol>")               # capture id
+     -> "code-graph not reachable" / empty -> repo not enrolled. Skip to LSP/Grep.
+     -> hits returned -> call cg_get_symbol, cg_reachability,
+                         cg_search_communities (semantic block surface),
+                         cg_orphans (dead-code surface) directly.
    ```
-   When the bridge is up, `docs_cg_communities_at_level(level=1)` gives you a
-   ready-made block segmentation; `docs_cg_communities_for_files([...])` checks
-   your manual segmentation against the graph-derived one.
+   When code-graph is reachable, `cg_search_communities(query="<broad
+   subsystem name>", level=0)` returns ready-made block candidates (each
+   community is a named architectural cluster -- needs `code-graph
+   build-embeddings`); `cg_communities_for_symbol(id=N, level=1)` checks
+   your manual segmentation against the graph-derived one by loop over a
+   few seed symbols per candidate block.
 2. **LSP** for in-file TypeScript queries (`lsp_definition`, `lsp_references`).
 3. **Grep + Read** fallback (always works):
    - `Grep(pattern="^(class |def |function |interface |enum )", path=<dir>)` --
      enumerate top-level declarations per module
    - `Grep(pattern="^(import|from|require)", path=<dir>)` -- trace cross-module imports
 
-Then the dependency graph (from cg_reachability when the bridge is up, or
-built by hand from the import grep when not):
+Then the dependency graph (from `cg_reachability` when code-graph is
+reachable, or built by hand from the import grep when not):
 
 - Map ALL cross-module relationships
 - Flag circular dependencies (always a finding)

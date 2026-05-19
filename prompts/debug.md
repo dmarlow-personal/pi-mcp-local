@@ -35,15 +35,18 @@ How will we know the bug is fixed? What edge cases to consider?
 Locate the failing code. Pick the cheapest navigator:
 
 ```
-docs_cg_search(query="<error class or function>")
+cg_current_selection()                            # if user said "debug this"
+cg_search(query="<error class or function>")      # locate the symbol
   -> "code-graph not reachable" / empty for known symbol
-       -> bridge unavailable. Use LSP (TypeScript) or Grep. Don't retry.
-  -> hits returned -> /skill:code-graph to unlock cg_get_symbol,
-                      cg_reachability, etc.
+       -> repo not enrolled. Use LSP (TypeScript) or Grep. Don't retry.
+  -> hits returned -> cg_get_symbol(id=N) for the 1-hop neighborhood;
+                      cg_reachability(id=N, direction="backward") for
+                      callers. No skill load needed -- read-only cg_*
+                      tools are callable directly.
 ```
 
 Then `Read(file, offset=line-5, limit=30)` for the slice. Trace imports/callers
-via `docs_cg_reachability(direction="backward")` when the bridge is up,
+via `cg_reachability(direction="backward")` when code-graph is reachable,
 `lsp_references` for TypeScript, or another `Grep` pass otherwise. Never open
 whole files to "orient".
 
@@ -60,7 +63,7 @@ for true exact-text matching of error strings, identifiers, and library symbols.
 **Rule 4 -- Divide and Conquer**
 Binary search through code/data. Isolate components. Test at boundaries.
 `git bisect` to find breaking commit. Narrow the call chain with the
-cheapest navigator available: `docs_cg_reachability(direction="backward")`
+cheapest navigator available: `cg_reachability(direction="backward")`
 when the bridge is up, `lsp_references` for TypeScript, or `Grep` for
 callers and call sites otherwise.
 

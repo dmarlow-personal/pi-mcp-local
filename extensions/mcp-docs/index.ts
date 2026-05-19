@@ -215,26 +215,12 @@ export default function (pi: ExtensionAPI) {
         "entities_in_document",
         "documents_mentioning",
         "search_communities",
-        // Code-graph bridge (optional — only useful when CODE_GRAPH_URL
-        // is set on the upstream MCP server and the target repo has
-        // been indexed via `code-graph index`. Probe with cg_search;
-        // on miss, fall through to LSP/Grep)
-        "cg_search",
-        "cg_get_symbol",
-        "cg_reachability",
-        "cg_adjacency",
-        "cg_symbol_community",
-        "cg_communities_for_files",
-        "cg_community",
-        "cg_communities_at_level",
-        "cg_orphans",
-        "cg_unused_exports",
-        "cg_search_communities",
-        "cg_links_for_community",
-        "cg_links_for_doc",
         // Peer review + security audit
         "assist",
         "audit_repo_security",
+        // (Code-graph tools are exposed by a separate extension --
+        // see extensions/mcp-code-graph/. They moved off the docs MCP
+        // server when the in-process bridge was retired.)
       ]);
 
       for (const tool of tools) {
